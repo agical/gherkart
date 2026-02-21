@@ -1,0 +1,12 @@
+include: package:lints/recommended.yaml
+
+linter:
+  rules:
+    - avoid_print
+    - prefer_single_quotes
+    - sort_pub_dependencies
+    - unawaited_futures
+
+analyzer:
+  errors:
+    avoid_print: warning

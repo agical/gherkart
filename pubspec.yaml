@@ -1,0 +1,26 @@
+name: gherkart
+description: >
+  A lightweight, runtime BDD framework for Flutter widget testing.
+  Parse Gherkin .feature files at runtime with no code generation.
+version: 0.1.0
+repository: https://github.com/agical/gherkart
+issue_tracker: https://github.com/agical/gherkart/issues
+topics:
+  - bdd
+  - testing
+  - gherkin
+  - cucumber
+  - flutter
+
+environment:
+  sdk: '>=3.2.0 <4.0.0'
+
+dependencies:
+  meta: ^1.9.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  lints: ^5.0.0
+  patrol_finders: ^3.0.0
+  test: ^1.24.0
