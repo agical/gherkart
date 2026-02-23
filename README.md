@@ -539,6 +539,16 @@ just format
 just check
 ```
 
+### Commit messages
+
+Use the format:
+
+```
+feat/fix/refactor: Short description
+
+Somewhat longer description when needed.
+```
+
 ## License
 
 MIT — see [LICENSE](LICENSE).
