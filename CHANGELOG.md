@@ -1,11 +1,11 @@
 # Changelog
 
-## 0.1.3
+## 0.1.4
 
 ### Improvements
 
 - Broaden package description to include Dart and Flutter
-- Add automated pub.dev publishing from CI via OIDC token exchange
+- Add automated pub.dev publishing via official dart-lang/setup-dart reusable workflow
 - Document git flow branching model and commit conventions in README
 
 ## 0.1.0
