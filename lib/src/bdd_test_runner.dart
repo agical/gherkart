@@ -154,7 +154,6 @@ class BddTestRunner<T> {
   TestPlan? _plan;
 
   // Current reporting context
-  ReportFeature? _currentFeature;
   ReportScenario? _currentScenario;
 
   BddTestRunner({
@@ -288,7 +287,6 @@ class BddTestRunner<T> {
           tags: feature.tags,
           sourceScenarios: feature.allScenarios,
         );
-        _currentFeature = reportFeature;
         reporter!.onFeatureStart(reportFeature);
       }
 

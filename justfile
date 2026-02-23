@@ -103,3 +103,8 @@ clean:
 [group('dev')]
 check: format-check analyze test-all
     @echo "✅ All checks passed"
+
+# Run full CI pipeline locally (checks + coverage)
+[group('dev')]
+ci: check test-coverage
+    @echo "✅ Full CI pipeline passed"

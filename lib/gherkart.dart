@@ -71,8 +71,11 @@ export 'src/bdd_output.dart' show BddOutput;
 export 'src/bdd_reporter.dart'
     show
         BddReporter,
+        BufferedFeature,
         BufferedReporter,
         BufferedResults,
+        BufferedScenario,
+        BufferedStep,
         CompositeReporter,
         ContinuousReporter,
         FeatureResult,

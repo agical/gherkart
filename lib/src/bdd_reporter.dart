@@ -296,7 +296,7 @@ class ContinuousReporter implements BddReporter {
 
 /// Buffered results from a test run.
 class BufferedResults {
-  final List<_BufferedFeature> features;
+  final List<BufferedFeature> features;
 
   BufferedResults(this.features);
 
@@ -313,41 +313,41 @@ class BufferedResults {
   }
 }
 
-class _BufferedFeature {
+class BufferedFeature {
   final ReportFeature feature;
   FeatureResult? result;
-  final List<_BufferedScenario> scenarios = [];
+  final List<BufferedScenario> scenarios = [];
 
-  _BufferedFeature(this.feature);
+  BufferedFeature(this.feature);
 }
 
-class _BufferedScenario {
+class BufferedScenario {
   final ReportScenario scenario;
   ScenarioResult? result;
-  final List<_BufferedStep> steps = [];
+  final List<BufferedStep> steps = [];
 
-  _BufferedScenario(this.scenario);
+  BufferedScenario(this.scenario);
 }
 
-class _BufferedStep {
+class BufferedStep {
   final ReportStep step;
   StepResult? result;
 
-  _BufferedStep(this.step);
+  BufferedStep(this.step);
 }
 
 /// Collects all events and reports them at the end.
 class BufferedReporter implements BddReporter {
   final void Function(BufferedResults results) onComplete;
-  final List<_BufferedFeature> _features = [];
-  _BufferedFeature? _currentFeature;
-  _BufferedScenario? _currentScenario;
+  final List<BufferedFeature> _features = [];
+  BufferedFeature? _currentFeature;
+  BufferedScenario? _currentScenario;
 
   BufferedReporter({required this.onComplete});
 
   @override
   void onFeatureStart(ReportFeature feature) {
-    _currentFeature = _BufferedFeature(feature);
+    _currentFeature = BufferedFeature(feature);
     _features.add(_currentFeature!);
   }
 
@@ -359,7 +359,7 @@ class BufferedReporter implements BddReporter {
 
   @override
   void onScenarioStart(ReportScenario scenario) {
-    _currentScenario = _BufferedScenario(scenario);
+    _currentScenario = BufferedScenario(scenario);
     _currentFeature?.scenarios.add(_currentScenario!);
   }
 
@@ -371,7 +371,7 @@ class BufferedReporter implements BddReporter {
 
   @override
   void onStepStart(ReportStep step) {
-    _currentScenario?.steps.add(_BufferedStep(step));
+    _currentScenario?.steps.add(BufferedStep(step));
   }
 
   @override
