@@ -549,6 +549,17 @@ feat/fix/refactor: Short description
 Somewhat longer description when needed.
 ```
 
+### Branches and pull requests
+
+The default branch is `develop`. Pull request branches should be named:
+
+- `feature/*` — new features
+- `hotfix/*` — urgent fixes
+- `release/*` — release preparation
+
+CI runs on all pushes to `main`, `develop`, `feature/*`, `hotfix/*`, and `release/*`.
+On pull requests, coverage is checked and must not decrease.
+
 ## License
 
 MIT — see [LICENSE](LICENSE).

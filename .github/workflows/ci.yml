@@ -2,9 +2,14 @@ name: CI
 
 on:
   push:
-    branches: [main]
+    branches:
+      - main
+      - develop
+      - 'feature/**'
+      - 'hotfix/**'
+      - 'release/**'
   pull_request:
-    branches: [main]
+    branches: [develop]
 
 jobs:
   check:
@@ -30,3 +35,57 @@ jobs:
 
       - name: Run example tests
         run: dart test example/
+
+  coverage:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+
+      - name: Install dependencies
+        run: dart pub get
+
+      - name: Coverage on PR branch
+        run: dart test --coverage=coverage test/unit/
+
+      - name: Parse PR coverage
+        id: pr_coverage
+        run: |
+          total=$(grep -c '^DA:' coverage/lcov.info)
+          hit=$(grep '^DA:' coverage/lcov.info | awk -F, '$2 > 0' | wc -l)
+          pct=$(awk "BEGIN { printf \"%.2f\", ($hit / $total) * 100 }")
+          echo "pct=$pct" >> "$GITHUB_OUTPUT"
+          echo "PR branch coverage: $pct%"
+
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.base.ref }}
+          clean: false
+          path: __base
+
+      - name: Coverage on base branch
+        run: |
+          cd __base
+          dart pub get
+          dart test --coverage=coverage test/unit/
+
+      - name: Parse base coverage
+        id: base_coverage
+        run: |
+          total=$(grep -c '^DA:' __base/coverage/lcov.info)
+          hit=$(grep '^DA:' __base/coverage/lcov.info | awk -F, '$2 > 0' | wc -l)
+          pct=$(awk "BEGIN { printf \"%.2f\", ($hit / $total) * 100 }")
+          echo "pct=$pct" >> "$GITHUB_OUTPUT"
+          echo "Base branch coverage: $pct%"
+
+      - name: Coverage must not decrease
+        run: |
+          echo "Base: ${{ steps.base_coverage.outputs.pct }}%"
+          echo "PR:   ${{ steps.pr_coverage.outputs.pct }}%"
+          awk "BEGIN { if (${{ steps.pr_coverage.outputs.pct }} < ${{ steps.base_coverage.outputs.pct }}) { print \"FAIL: Coverage decreased\"; exit 1 } else { print \"OK: Coverage did not decrease\" } }"
