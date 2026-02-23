@@ -99,9 +99,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: dart-lang/setup-dart@v1
+      - uses: subosito/flutter-action@v2
         with:
-          sdk: stable
+          channel: stable
 
       - name: Publish to pub.dev
-        run: dart pub publish --force
+        run: flutter pub publish --force
