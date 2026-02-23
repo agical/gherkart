@@ -551,14 +551,16 @@ Somewhat longer description when needed.
 
 ### Branches and pull requests
 
-The default branch is `develop`. Pull request branches should be named:
+This project follows the [git flow](https://nvie.com/posts/a-successful-git-branching-model/) branching model by Vincent Driessen, using the [git-flow AVH](https://github.com/petervanderdoes/gitflow-avh) tool.
+
+The default branch is `develop`. Pull request branches should be based on `develop` and named:
 
 - `feature/*` — new features
-- `hotfix/*` — urgent fixes
-- `release/*` — release preparation
 
 CI runs on all pushes to `main`, `develop`, `feature/*`, `hotfix/*`, and `release/*`.
 On pull requests, coverage is checked and must not decrease.
+
+
 
 ## License
 

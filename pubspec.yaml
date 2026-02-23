@@ -1,8 +1,8 @@
 name: gherkart
 description: >
-  A lightweight, runtime BDD framework for Flutter widget testing.
+  A lightweight, runtime BDD framework for Dart and Flutter testing.
   Parse Gherkin .feature files at runtime with no code generation.
-version: 0.1.0
+version: 0.1.1
 repository: https://github.com/agical/gherkart
 issue_tracker: https://github.com/agical/gherkart/issues
 topics:

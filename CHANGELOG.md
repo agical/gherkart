@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.1.1
+
+### Improvements
+
+- Broaden package description to include Dart and Flutter
+- Add automated pub.dev publishing from CI via OIDC token exchange
+- Document git flow branching model and commit conventions in README
+
 ## 0.1.0
 
 Initial release of Gherkart — a runtime BDD framework for Dart and Flutter.

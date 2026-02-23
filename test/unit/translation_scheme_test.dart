@@ -41,8 +41,8 @@ void main() {
 {
   "@@locale": "en",
   "sessionTitle": "Sessions",
-  "homeWelcome": "Welcome to RipMatrix",
-  "appName": "RipMatrix"
+  "homeWelcome": "Welcome to Beer Pong",
+  "appName": "Beer Pong"
 }
 ''',
         });
@@ -50,7 +50,7 @@ void main() {
         final handler = createArbTranslationHandler('test.arb', source: source);
 
         expect(await handler('sessionTitle'), 'Sessions');
-        expect(await handler('homeWelcome'), 'Welcome to RipMatrix');
+        expect(await handler('homeWelcome'), 'Welcome to Beer Pong');
       });
 
       test('throws on unknown key with AssetSource', () async {

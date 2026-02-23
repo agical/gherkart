@@ -34,7 +34,7 @@ import 'scheme_resolver.dart';
 /// {
 ///   "@@locale": "en",
 ///   "sessionTitle": "Sessions",
-///   "homeWelcome": "Welcome to RipMatrix"
+///   "homeWelcome": "Welcome to Beer Pong"
 /// }
 /// ```
 ///

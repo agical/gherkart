@@ -89,3 +89,19 @@ jobs:
           echo "Base: ${{ steps.base_coverage.outputs.pct }}%"
           echo "PR:   ${{ steps.pr_coverage.outputs.pct }}%"
           awk "BEGIN { if (${{ steps.pr_coverage.outputs.pct }} < ${{ steps.base_coverage.outputs.pct }}) { print \"FAIL: Coverage decreased\"; exit 1 } else { print \"OK: Coverage did not decrease\" } }"
+
+  publish:
+    if: github.ref == 'refs/heads/main'
+    needs: check
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dart-lang/setup-dart@v1
+        with:
+          sdk: stable
+
+      - name: Publish to pub.dev
+        run: dart pub publish --force
