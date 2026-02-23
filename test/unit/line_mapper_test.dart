@@ -41,10 +41,10 @@ void main() {
 
       test('extracts multiple parameters', () {
         final mapper = 'I set {field} to {value}'.mapper();
-        final result = mapper('I set club name to Driver');
+        final result = mapper('I set team name to Champions');
 
         expect(result, isNotNull);
-        expect(result, ['club name', 'Driver']);
+        expect(result, ['team name', 'Champions']);
       });
 
       test('handles parameter at start of line', () {

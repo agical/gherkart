@@ -59,7 +59,7 @@ Feature: Test
       test('parses feature description', () {
         const content = '''
 Feature: Home Page
-  As a golfer discovering RipMatrix
+  As a player discovering Beer Pong
   I want to see a welcoming home page
   So that I understand the app
 
@@ -68,7 +68,7 @@ Feature: Home Page
 ''';
         final feature = parseFeature(content, 'test.feature');
 
-        expect(feature.description, contains('As a golfer'));
+        expect(feature.description, contains('As a player'));
         expect(feature.description, contains('I want to see'));
         expect(feature.description, contains('So that'));
       });
@@ -164,13 +164,13 @@ Feature: Test
 Feature: Test
   Scenario: Test params
     When I navigate to "Sessions"
-    And I set club to "Driver"
+    And I set team to "Champions"
 ''';
         final feature = parseFeature(content, 'test.feature');
 
         final steps = feature.scenarios[0].steps;
         expect(steps[0].text, 'I navigate to "Sessions"');
-        expect(steps[1].text, 'I set club to "Driver"');
+        expect(steps[1].text, 'I set team to "Champions"');
       });
     });
 
