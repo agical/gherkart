@@ -27,8 +27,7 @@ class Feature {
       ];
 
   @override
-  String toString() =>
-      'Feature($name, ${scenarios.length} scenarios, ${scenarioOutlines.length} outlines)';
+  String toString() => 'Feature($name, ${scenarios.length} scenarios, ${scenarioOutlines.length} outlines)';
 }
 
 /// Represents the Background section of a feature.
@@ -82,9 +81,8 @@ class ScenarioOutline {
         final values = Map.fromIterables(exampleTable.headers, row);
 
         // Generate scenario name
-        final exampleName = exampleTable.name != null
-            ? '${exampleTable.name} #${rowIndex + 1}'
-            : 'Example ${rowIndex + 1}';
+        final exampleName =
+            exampleTable.name != null ? '${exampleTable.name} #${rowIndex + 1}' : 'Example ${rowIndex + 1}';
         final scenarioName = '$name ($exampleName)';
 
         // Substitute placeholders in steps
@@ -92,9 +90,7 @@ class ScenarioOutline {
           var text = step.text;
           for (final entry in values.entries) {
             // Support both <placeholder> and {placeholder} syntax
-            text = text
-                .replaceAll('<${entry.key}>', entry.value)
-                .replaceAll('{${entry.key}}', entry.value);
+            text = text.replaceAll('<${entry.key}>', entry.value).replaceAll('{${entry.key}}', entry.value);
           }
           return Step(
             keyword: step.keyword,
@@ -116,8 +112,7 @@ class ScenarioOutline {
   }
 
   @override
-  String toString() =>
-      'ScenarioOutline($name, ${steps.length} steps, ${examples.length} examples)';
+  String toString() => 'ScenarioOutline($name, ${steps.length} steps, ${examples.length} examples)';
 }
 
 /// Represents an Examples table in a Scenario Outline.
@@ -137,12 +132,10 @@ class ExampleTable {
   });
 
   /// Converts rows to list of maps for easy access.
-  List<Map<String, String>> toMaps() =>
-      rows.map((row) => Map.fromIterables(headers, row)).toList();
+  List<Map<String, String>> toMaps() => rows.map((row) => Map.fromIterables(headers, row)).toList();
 
   @override
-  String toString() =>
-      'ExampleTable(${name ?? 'unnamed'}, ${headers.length} cols, ${rows.length} rows)';
+  String toString() => 'ExampleTable(${name ?? 'unnamed'}, ${headers.length} cols, ${rows.length} rows)';
 }
 
 /// Source location for error reporting.
@@ -178,15 +171,13 @@ class DataTable {
   });
 
   /// Converts rows to list of maps using headers as keys.
-  List<Map<String, String>> toMaps() =>
-      rows.map((row) => Map.fromIterables(headers, row)).toList();
+  List<Map<String, String>> toMaps() => rows.map((row) => Map.fromIterables(headers, row)).toList();
 
   /// Returns raw rows including header row.
   List<List<String>> get allRows => [headers, ...rows];
 
   @override
-  String toString() =>
-      'DataTable(${headers.length} cols, ${rows.length} rows)';
+  String toString() => 'DataTable(${headers.length} cols, ${rows.length} rows)';
 }
 
 /// Represents a doc string (multi-line string) attached to a step.
@@ -213,8 +204,7 @@ class DocString {
   });
 
   @override
-  String toString() =>
-      'DocString(${mediaType ?? 'text'}, ${content.length} chars)';
+  String toString() => 'DocString(${mediaType ?? 'text'}, ${content.length} chars)';
 }
 
 /// Represents a single step (Given/When/Then/And/But).
@@ -234,8 +224,7 @@ class Step {
   });
 
   /// Returns the full step text including keyword.
-  String get fullText =>
-      '${keyword.name[0].toUpperCase()}${keyword.name.substring(1)} $text';
+  String get fullText => '${keyword.name[0].toUpperCase()}${keyword.name.substring(1)} $text';
 
   /// Creates a copy with updated fields.
   Step copyWith({
@@ -394,29 +383,24 @@ Feature parseFeature(String content, String filePath) {
     }
 
     // Check for doc string start
-    if ((line.startsWith('"""') || line.startsWith("'''")) &&
-        currentSteps.isNotEmpty) {
+    if ((line.startsWith('"""') || line.startsWith("'''")) && currentSteps.isNotEmpty) {
       collectingDocString = true;
       docStringDelimiter = line.substring(0, 3);
       // Media type is optional text after the delimiter
       docStringMediaType = line.substring(3).trim();
-      docStringLocation =
-          SourceLocation(filePath: filePath, line: currentLineNumber);
+      docStringLocation = SourceLocation(filePath: filePath, line: currentLineNumber);
       if (collectingTable) attachTableToLastStep();
       continue;
     }
 
     // Handle data table collection (for steps)
-    if (line.startsWith('|') &&
-        currentSteps.isNotEmpty &&
-        currentSection != _Section.examples) {
+    if (line.startsWith('|') && currentSteps.isNotEmpty && currentSection != _Section.examples) {
       final cells = _parseTableRow(line);
       if (!collectingTable) {
         collectingTable = true;
         tableHeaders = cells;
         tableRows = [];
-        tableLocation =
-            SourceLocation(filePath: filePath, line: currentLineNumber);
+        tableLocation = SourceLocation(filePath: filePath, line: currentLineNumber);
       } else {
         tableRows.add(cells);
       }
@@ -448,11 +432,7 @@ Feature parseFeature(String content, String filePath) {
 
     // Parse tags
     if (line.startsWith('@')) {
-      final tags = line
-          .split(RegExp(r'\s+'))
-          .where((t) => t.startsWith('@'))
-          .map((t) => t.substring(1))
-          .toList();
+      final tags = line.split(RegExp(r'\s+')).where((t) => t.startsWith('@')).map((t) => t.substring(1)).toList();
       pendingTags.addAll(tags);
       continue;
     }
@@ -476,8 +456,7 @@ Feature parseFeature(String content, String filePath) {
     }
 
     // Parse Scenario Outline
-    if (line.startsWith('Scenario Outline:') ||
-        line.startsWith('Scenario Template:')) {
+    if (line.startsWith('Scenario Outline:') || line.startsWith('Scenario Template:')) {
       // Save previous scenario/outline if exists
       if ((currentSection == _Section.scenario ||
               currentSection == _Section.scenarioOutline ||
@@ -490,9 +469,7 @@ Feature parseFeature(String content, String filePath) {
         background = Background(steps: currentSteps);
       }
 
-      final prefix = line.startsWith('Scenario Outline:')
-          ? 'Scenario Outline:'
-          : 'Scenario Template:';
+      final prefix = line.startsWith('Scenario Outline:') ? 'Scenario Outline:' : 'Scenario Template:';
       currentScenarioName = line.substring(prefix.length).trim();
       currentScenarioTags = List.from(pendingTags);
       pendingTags = [];
@@ -509,14 +486,12 @@ Feature parseFeature(String content, String filePath) {
       // Save previous example table if exists
       saveCurrentExampleTable();
 
-      final prefix =
-          line.startsWith('Examples:') ? 'Examples:' : 'Scenarios:';
+      final prefix = line.startsWith('Examples:') ? 'Examples:' : 'Scenarios:';
       currentExampleName = line.substring(prefix.length).trim();
       currentExampleTags = List.from(pendingTags);
       pendingTags = [];
       currentSection = _Section.examples;
-      exampleLocation =
-          SourceLocation(filePath: filePath, line: currentLineNumber);
+      exampleLocation = SourceLocation(filePath: filePath, line: currentLineNumber);
       continue;
     }
 
@@ -578,8 +553,7 @@ Feature parseFeature(String content, String filePath) {
   return Feature(
     name: featureName ?? 'Unnamed Feature',
     filePath: filePath,
-    description:
-        descriptionLines.isNotEmpty ? descriptionLines.join('\n') : null,
+    description: descriptionLines.isNotEmpty ? descriptionLines.join('\n') : null,
     tags: featureTags,
     background: background,
     scenarios: scenarios,
@@ -589,11 +563,7 @@ Feature parseFeature(String content, String filePath) {
 
 /// Parses a table row, splitting by | and trimming cells.
 List<String> _parseTableRow(String line) {
-  return line
-      .split('|')
-      .map((cell) => cell.trim())
-      .where((cell) => cell.isNotEmpty)
-      .toList();
+  return line.split('|').map((cell) => cell.trim()).where((cell) => cell.isNotEmpty).toList();
 }
 
 Step? _parseStep(String line, String filePath, int lineNumber) {

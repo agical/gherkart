@@ -84,8 +84,7 @@ void main() {
 
       reporter.flush();
 
-      final expectedFile =
-          File(p.join(outputDir, 'features', 'features_auth_login.md'));
+      final expectedFile = File(p.join(outputDir, 'features', 'features_auth_login.md'));
       expect(expectedFile.existsSync(), isTrue);
     });
 
@@ -114,13 +113,11 @@ void main() {
 
       // Files should be flat in features subfolder
       expect(
-        File(p.join(outputDir, 'features', 'features_module1_a.md'))
-            .existsSync(),
+        File(p.join(outputDir, 'features', 'features_module1_a.md')).existsSync(),
         isTrue,
       );
       expect(
-        File(p.join(outputDir, 'features', 'features_module2_b.md'))
-            .existsSync(),
+        File(p.join(outputDir, 'features', 'features_module2_b.md')).existsSync(),
         isTrue,
       );
       // Only features subfolder should exist, not nested structure
@@ -154,8 +151,7 @@ void main() {
       reporter.flush();
 
       // No directory index files should exist
-      final dirIndexFile =
-          File(p.join(outputDir, 'features', 'auth', 'index.md'));
+      final dirIndexFile = File(p.join(outputDir, 'features', 'auth', 'index.md'));
       expect(dirIndexFile.existsSync(), isFalse);
 
       // Only root index should exist with all features
@@ -183,19 +179,15 @@ void main() {
           path: 'features/wip.feature',
           tags: ['@wip'],
         ),
-        FeatureResult
-            .passed(), // Result may still be "passed" but no scenarios ran
+        FeatureResult.passed(), // Result may still be "passed" but no scenarios ran
       );
 
       reporter.flush();
 
-      final indexContent =
-          File(p.join(outputDir, 'index.md')).readAsStringSync();
+      final indexContent = File(p.join(outputDir, 'index.md')).readAsStringSync();
       // Should show skipped icon, not question mark
-      expect(indexContent, contains('⏭️'),
-          reason: '@wip features should show skipped');
-      expect(indexContent, isNot(contains('❓')),
-          reason: '@wip features should not show unknown status');
+      expect(indexContent, contains('⏭️'), reason: '@wip features should show skipped');
+      expect(indexContent, isNot(contains('❓')), reason: '@wip features should not show unknown status');
     });
 
     test('generates root index file', () {
@@ -226,15 +218,13 @@ void main() {
         path: 'features/auth.feature',
       ));
       reporter.onFeatureComplete(
-        ReportFeature(
-            name: 'User Authentication', path: 'features/auth.feature'),
+        ReportFeature(name: 'User Authentication', path: 'features/auth.feature'),
         FeatureResult.passed(),
       );
 
       reporter.flush();
 
-      final content = File(p.join(outputDir, 'features', 'features_auth.md'))
-          .readAsStringSync();
+      final content = File(p.join(outputDir, 'features', 'features_auth.md')).readAsStringSync();
       expect(content, contains('# User Authentication'));
     });
 
@@ -269,8 +259,7 @@ void main() {
 
       reporter.flush();
 
-      final content = File(p.join(outputDir, 'features', 'features_auth.md'))
-          .readAsStringSync();
+      final content = File(p.join(outputDir, 'features', 'features_auth.md')).readAsStringSync();
       // Scenario headings now include status icon
       expect(content, contains('## ✅ Login successfully'));
       expect(content, contains('## ✅ Login fails with wrong password'));
@@ -304,8 +293,7 @@ void main() {
 
       reporter.flush();
 
-      final content = File(p.join(outputDir, 'features', 'features_test.md'))
-          .readAsStringSync();
+      final content = File(p.join(outputDir, 'features', 'features_test.md')).readAsStringSync();
       // Given uses clipboard icon, When uses action icon with failure mark
       expect(content, contains('📋 **Given** something passed'));
       expect(content, contains('⚡ **When** something failed ❌'));
@@ -333,17 +321,13 @@ void main() {
         ScenarioResult.passed(),
       );
       reporter.onFeatureComplete(
-        ReportFeature(
-            name: 'Tagged Feature',
-            path: 'features/tagged.feature',
-            tags: ['@smoke', '@api']),
+        ReportFeature(name: 'Tagged Feature', path: 'features/tagged.feature', tags: ['@smoke', '@api']),
         FeatureResult.passed(),
       );
 
       reporter.flush();
 
-      final content = File(p.join(outputDir, 'features', 'features_tagged.md'))
-          .readAsStringSync();
+      final content = File(p.join(outputDir, 'features', 'features_tagged.md')).readAsStringSync();
       expect(content, contains('@smoke'));
       expect(content, contains('@api'));
       expect(content, contains('@slow'));
@@ -377,9 +361,7 @@ void main() {
       expect(content, contains('❌'));
     });
 
-    test(
-        'scenario result is recorded when multiple scenarios start before completing (async execution)',
-        () {
+    test('scenario result is recorded when multiple scenarios start before completing (async execution)', () {
       // This simulates async test execution where scenario B starts before scenario A completes
       // BUG: _currentScenario gets overwritten, so scenario A's result is lost
       final outputDir = p.join(tempDir.path, 'reports');
@@ -410,15 +392,13 @@ void main() {
 
       // Now Scenario A completes - but _currentScenario points to B!
       reporter.onScenarioComplete(
-        ReportScenario(
-            name: 'Scenario in A', tags: [], featurePath: 'features/a.feature'),
+        ReportScenario(name: 'Scenario in A', tags: [], featurePath: 'features/a.feature'),
         ScenarioResult.passed(),
       );
 
       // Scenario B completes
       reporter.onScenarioComplete(
-        ReportScenario(
-            name: 'Scenario in B', tags: [], featurePath: 'features/b.feature'),
+        ReportScenario(name: 'Scenario in B', tags: [], featurePath: 'features/b.feature'),
         ScenarioResult.passed(),
       );
 
@@ -434,17 +414,13 @@ void main() {
       reporter.flush();
 
       // Check root index - no question marks should appear
-      final indexContent =
-          File(p.join(outputDir, 'index.md')).readAsStringSync();
-      expect(indexContent, isNot(contains('❓')),
-          reason: 'All scenarios should have status, not unknown');
+      final indexContent = File(p.join(outputDir, 'index.md')).readAsStringSync();
+      expect(indexContent, isNot(contains('❓')), reason: 'All scenarios should have status, not unknown');
       expect(indexContent, contains('✅ Scenario in A'));
       expect(indexContent, contains('✅ Scenario in B'));
     });
 
-    test(
-        'associates scenarios with correct feature when features start before scenarios (async execution)',
-        () {
+    test('associates scenarios with correct feature when features start before scenarios (async execution)', () {
       // This simulates async test execution where all onFeatureStart calls
       // happen before any onScenarioStart calls
       final outputDir = p.join(tempDir.path, 'reports');
@@ -471,8 +447,7 @@ void main() {
         StepResult.passed(Duration(milliseconds: 10)),
       );
       reporter.onScenarioComplete(
-        ReportScenario(
-            name: 'Scenario in A', tags: [], featurePath: 'features/a.feature'),
+        ReportScenario(name: 'Scenario in A', tags: [], featurePath: 'features/a.feature'),
         ScenarioResult.passed(),
       );
 
@@ -487,8 +462,7 @@ void main() {
         StepResult.passed(Duration(milliseconds: 10)),
       );
       reporter.onScenarioComplete(
-        ReportScenario(
-            name: 'Scenario in B', tags: [], featurePath: 'features/b.feature'),
+        ReportScenario(name: 'Scenario in B', tags: [], featurePath: 'features/b.feature'),
         ScenarioResult.passed(),
       );
 
@@ -505,25 +479,21 @@ void main() {
       reporter.flush();
 
       // Feature A should contain only its scenario
-      final contentA = File(p.join(outputDir, 'features', 'features_a.md'))
-          .readAsStringSync();
+      final contentA = File(p.join(outputDir, 'features', 'features_a.md')).readAsStringSync();
       expect(contentA, contains('Scenario in A'));
       expect(contentA, contains('step in A'));
       expect(contentA, isNot(contains('Scenario in B')));
       expect(contentA, isNot(contains('step in B')));
 
       // Feature B should contain only its scenario
-      final contentB = File(p.join(outputDir, 'features', 'features_b.md'))
-          .readAsStringSync();
+      final contentB = File(p.join(outputDir, 'features', 'features_b.md')).readAsStringSync();
       expect(contentB, contains('Scenario in B'));
       expect(contentB, contains('step in B'));
       expect(contentB, isNot(contains('Scenario in A')));
       expect(contentB, isNot(contains('step in A')));
     });
 
-    test(
-        'computes feature status from scenario results when onFeatureComplete has unknown status',
-        () {
+    test('computes feature status from scenario results when onFeatureComplete has unknown status', () {
       final outputDir = p.join(tempDir.path, 'reports');
       final reporter = MarkdownFileReporter(outputDir: outputDir);
 
@@ -541,23 +511,18 @@ void main() {
         StepResult.passed(Duration(milliseconds: 10)),
       );
       reporter.onScenarioComplete(
-        ReportScenario(
-            name: 'Passing scenario',
-            tags: [],
-            featurePath: 'features/computed.feature'),
+        ReportScenario(name: 'Passing scenario', tags: [], featurePath: 'features/computed.feature'),
         ScenarioResult.passed(),
       );
       // Feature completes but result may not reflect actual scenario results
       reporter.onFeatureComplete(
-        ReportFeature(
-            name: 'Feature With Steps', path: 'features/computed.feature'),
+        ReportFeature(name: 'Feature With Steps', path: 'features/computed.feature'),
         FeatureResult.passed(),
       );
 
       reporter.flush();
 
-      final indexContent =
-          File(p.join(outputDir, 'index.md')).readAsStringSync();
+      final indexContent = File(p.join(outputDir, 'index.md')).readAsStringSync();
       // Should show passed status (✅) computed from scenario results
       expect(indexContent, contains('✅'));
       expect(indexContent, isNot(contains('❓')));
@@ -599,8 +564,7 @@ void main() {
 
       reporter.flush();
 
-      final content = File(p.join(outputDir, 'features', 'features_icons.md'))
-          .readAsStringSync();
+      final content = File(p.join(outputDir, 'features', 'features_icons.md')).readAsStringSync();
       // Given uses clipboard icon
       expect(content, contains('📋'));
       expect(content, contains('📋 **Given**'));
@@ -642,8 +606,7 @@ void main() {
 
       reporter.flush();
 
-      final content = File(p.join(outputDir, 'features', 'features_fail.md'))
-          .readAsStringSync();
+      final content = File(p.join(outputDir, 'features', 'features_fail.md')).readAsStringSync();
       // Passed step has no failure indicator
       expect(content, contains('📋 **Given** something ok'));
       expect(content, isNot(contains('something ok ❌')));
@@ -675,8 +638,7 @@ void main() {
 
       reporter.flush();
 
-      final content = File(p.join(outputDir, 'features', 'features_then.md'))
-          .readAsStringSync();
+      final content = File(p.join(outputDir, 'features', 'features_then.md')).readAsStringSync();
       // Then uses green checkmark ✅
       expect(content, contains('✅ **Then**'));
     });
@@ -689,8 +651,7 @@ void main() {
         name: 'Headline Test',
         path: 'features/headline.feature',
       ));
-      reporter
-          .onScenarioStart(ReportScenario(name: 'Passing Scenario', tags: []));
+      reporter.onScenarioStart(ReportScenario(name: 'Passing Scenario', tags: []));
       reporter.onStepComplete(
         ReportStep(keyword: 'Given', text: 'something'),
         StepResult.passed(Duration.zero),
@@ -706,9 +667,7 @@ void main() {
 
       reporter.flush();
 
-      final content =
-          File(p.join(outputDir, 'features', 'features_headline.md'))
-              .readAsStringSync();
+      final content = File(p.join(outputDir, 'features', 'features_headline.md')).readAsStringSync();
       // Passing scenario headline has green checkmark
       expect(content, contains('## ✅ Passing Scenario'));
     });
@@ -721,8 +680,7 @@ void main() {
         name: 'Failed Headline',
         path: 'features/failed.feature',
       ));
-      reporter
-          .onScenarioStart(ReportScenario(name: 'Failing Scenario', tags: []));
+      reporter.onScenarioStart(ReportScenario(name: 'Failing Scenario', tags: []));
       reporter.onStepComplete(
         ReportStep(keyword: 'Given', text: 'something'),
         StepResult.failed(Duration.zero, 'Error'),
@@ -738,8 +696,7 @@ void main() {
 
       reporter.flush();
 
-      final content = File(p.join(outputDir, 'features', 'features_failed.md'))
-          .readAsStringSync();
+      final content = File(p.join(outputDir, 'features', 'features_failed.md')).readAsStringSync();
       // Failed scenario headline has red X
       expect(content, contains('## ❌ Failing Scenario'));
     });
@@ -767,8 +724,7 @@ void main() {
 
       reporter.flush();
 
-      final content = File(p.join(outputDir, 'features', 'features_skipped.md'))
-          .readAsStringSync();
+      final content = File(p.join(outputDir, 'features', 'features_skipped.md')).readAsStringSync();
       // Skipped scenario headline has skip icon
       expect(content, contains('## ⏭️ WIP Scenario'));
       // Tags are shown
@@ -801,8 +757,7 @@ void main() {
 
       reporter.flush();
 
-      final content = File(p.join(outputDir, 'features', 'features_tagged.md'))
-          .readAsStringSync();
+      final content = File(p.join(outputDir, 'features', 'features_tagged.md')).readAsStringSync();
       // Feature tags shown
       expect(content, contains('@smoke'));
       expect(content, contains('@api'));
@@ -826,21 +781,17 @@ void main() {
         StepResult.passed(Duration.zero),
       );
       reporter.onScenarioComplete(
-        ReportScenario(
-            name: 'Tagged Scenario', tags: ['@critical', '@regression']),
+        ReportScenario(name: 'Tagged Scenario', tags: ['@critical', '@regression']),
         ScenarioResult.passed(),
       );
       reporter.onFeatureComplete(
-        ReportFeature(
-            name: 'Scenario Tags', path: 'features/scenario_tags.feature'),
+        ReportFeature(name: 'Scenario Tags', path: 'features/scenario_tags.feature'),
         FeatureResult.passed(),
       );
 
       reporter.flush();
 
-      final content =
-          File(p.join(outputDir, 'features', 'features_scenario_tags.md'))
-              .readAsStringSync();
+      final content = File(p.join(outputDir, 'features', 'features_scenario_tags.md')).readAsStringSync();
       // Scenario tags shown
       expect(content, contains('@critical'));
       expect(content, contains('@regression'));
@@ -860,16 +811,13 @@ void main() {
         ScenarioResult.passed(),
       );
       reporter.onFeatureComplete(
-        ReportFeature(
-            name: 'Back Link Test', path: 'features/backlink.feature'),
+        ReportFeature(name: 'Back Link Test', path: 'features/backlink.feature'),
         FeatureResult.passed(),
       );
 
       reporter.flush();
 
-      final content =
-          File(p.join(outputDir, 'features', 'features_backlink.md'))
-              .readAsStringSync();
+      final content = File(p.join(outputDir, 'features', 'features_backlink.md')).readAsStringSync();
       // Back link at top of file (features are in features/ subfolder, so link to ../index.md)
       expect(content, contains('[← Back to index](../index.md)'));
     });
@@ -888,8 +836,7 @@ void main() {
         ScenarioResult.passed(),
       );
       reporter.onFeatureComplete(
-        ReportFeature(
-            name: 'Root Link Test', path: 'features/rootlink.feature'),
+        ReportFeature(name: 'Root Link Test', path: 'features/rootlink.feature'),
         FeatureResult.passed(),
       );
 
@@ -914,8 +861,7 @@ void main() {
         name: 'Login Feature',
         path: 'features/auth/login.feature',
       ));
-      reporter
-          .onScenarioStart(ReportScenario(name: 'Successful login', tags: []));
+      reporter.onScenarioStart(ReportScenario(name: 'Successful login', tags: []));
       reporter.onStepComplete(
         ReportStep(keyword: 'Given', text: 'user exists'),
         StepResult.passed(Duration.zero),
@@ -934,8 +880,7 @@ void main() {
         ScenarioResult.failed('Error'),
       );
       reporter.onFeatureComplete(
-        ReportFeature(
-            name: 'Login Feature', path: 'features/auth/login.feature'),
+        ReportFeature(name: 'Login Feature', path: 'features/auth/login.feature'),
         FeatureResult.mixed(),
       );
 
@@ -990,16 +935,14 @@ void main() {
         ScenarioResult.passed(),
       );
       reporter.onFeatureComplete(
-        ReportFeature(
-            name: 'Nested Feature', path: 'features/deep/nested/test.feature'),
+        ReportFeature(name: 'Nested Feature', path: 'features/deep/nested/test.feature'),
         FeatureResult.passed(),
       );
 
       reporter.flush();
 
       // Feature file should be in features subfolder (flat naming in features dir)
-      final flatFile =
-          File(p.join(outputDir, 'features', 'features_deep_nested_test.md'));
+      final flatFile = File(p.join(outputDir, 'features', 'features_deep_nested_test.md'));
       expect(flatFile.existsSync(), isTrue);
 
       final content = flatFile.readAsStringSync();
@@ -1021,8 +964,7 @@ void main() {
         ScenarioResult.passed(),
       );
       reporter.onFeatureComplete(
-        ReportFeature(
-            name: 'Test Feature', path: 'features/auth/login.feature'),
+        ReportFeature(name: 'Test Feature', path: 'features/auth/login.feature'),
         FeatureResult.passed(),
       );
 
@@ -1058,8 +1000,7 @@ void main() {
       reporter.flush();
 
       // Feature file should be in features/ subfolder
-      final featureFile =
-          File(p.join(outputDir, 'features', 'features_auth_login.md'));
+      final featureFile = File(p.join(outputDir, 'features', 'features_auth_login.md'));
       expect(featureFile.existsSync(), isTrue);
 
       // Back link should go up to root index

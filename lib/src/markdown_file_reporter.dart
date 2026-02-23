@@ -116,10 +116,7 @@ class MarkdownFileReporter implements BddReporter {
 
   void _writeFeatureFile(_FeatureReport feature) {
     // Flatten path: features/auth/login.feature -> features_auth_login.md
-    final flatName = feature.feature.path
-        .replaceAll('.feature', '')
-        .replaceAll('/', '_')
-        .replaceAll(r'\', '_');
+    final flatName = feature.feature.path.replaceAll('.feature', '').replaceAll('/', '_').replaceAll(r'\', '_');
     final outputPath = p.join(outputDir, 'features', '$flatName.md');
 
     // Create features directory
@@ -151,9 +148,7 @@ class MarkdownFileReporter implements BddReporter {
 
     // Find unexecuted scenarios (e.g., @wip scenarios that were skipped)
     final executedNames = feature.scenarios.map((s) => s.scenario.name).toSet();
-    final unexecutedScenarios = feature.feature.sourceScenarios
-        .where((s) => !executedNames.contains(s.name))
-        .toList();
+    final unexecutedScenarios = feature.feature.sourceScenarios.where((s) => !executedNames.contains(s.name)).toList();
 
     if (unexecutedScenarios.isNotEmpty) {
       buffer.writeln('---');
@@ -201,8 +196,7 @@ class MarkdownFileReporter implements BddReporter {
         StepStatus.failed => ' ❌',
         StepStatus.skipped => ' ⏭️',
       };
-      buffer.writeln(
-          '- $keywordIcon **${step.step.keyword}** ${step.step.text}$failureMark');
+      buffer.writeln('- $keywordIcon **${step.step.keyword}** ${step.step.text}$failureMark');
     }
     buffer.writeln();
   }
@@ -225,8 +219,7 @@ class MarkdownFileReporter implements BddReporter {
         StepKeyword.then => '✅',
         StepKeyword.and || StepKeyword.but => '➕',
       };
-      final keywordText =
-          step.keyword.name[0].toUpperCase() + step.keyword.name.substring(1);
+      final keywordText = step.keyword.name[0].toUpperCase() + step.keyword.name.substring(1);
       buffer.writeln('- $keywordIcon **$keywordText** ${step.text}');
     }
     buffer.writeln();
@@ -295,12 +288,8 @@ class MarkdownFileReporter implements BddReporter {
                 null => '❓',
               };
         // Flat file name in features subfolder: features/auth/login.feature -> features/features_auth_login.md
-        final flatName = feature.feature.path
-            .replaceAll('.feature', '')
-            .replaceAll('/', '_')
-            .replaceAll(r'\', '_');
-        buffer.writeln(
-            '- $featureIcon [${feature.feature.name}](features/$flatName.md)');
+        final flatName = feature.feature.path.replaceAll('.feature', '').replaceAll('/', '_').replaceAll(r'\', '_');
+        buffer.writeln('- $featureIcon [${feature.feature.name}](features/$flatName.md)');
 
         // List scenarios under each feature
         for (final scenario in feature.scenarios) {
@@ -330,8 +319,7 @@ class _FeatureReport {
   /// Check if feature has skip-related tags (@wip, @skip)
   bool get hasSkipTag {
     final tags = feature.tags;
-    return tags
-        .any((t) => t == '@wip' || t == '@skip' || t == 'wip' || t == 'skip');
+    return tags.any((t) => t == '@wip' || t == '@skip' || t == 'wip' || t == 'skip');
   }
 
   /// Compute status from scenarios if result not set
@@ -343,10 +331,8 @@ class _FeatureReport {
       return hasSkipTag ? FeatureStatus.passed : null;
     }
 
-    final hasFailure =
-        scenarios.any((s) => s.computedStatus == ScenarioStatus.failed);
-    final hasPassed =
-        scenarios.any((s) => s.computedStatus == ScenarioStatus.passed);
+    final hasFailure = scenarios.any((s) => s.computedStatus == ScenarioStatus.failed);
+    final hasPassed = scenarios.any((s) => s.computedStatus == ScenarioStatus.passed);
 
     if (hasFailure && hasPassed) return FeatureStatus.mixed;
     if (hasFailure) return FeatureStatus.failed;

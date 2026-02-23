@@ -66,8 +66,7 @@ void main() {
           'greeting': 'Hello!',
           'farewell': 'Goodbye!',
         };
-        resolver.register(
-            't', createTranslationHandler((key) => translations[key]!));
+        resolver.register('t', createTranslationHandler((key) => translations[key]!));
 
         final result = await resolver.resolve('{t:greeting}');
 

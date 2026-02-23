@@ -69,8 +69,7 @@ class BddOutput {
   }
 
   /// Formats a failed step.
-  String formatStepFailed(String keyword, String text) =>
-      '    ✗ $keyword $text';
+  String formatStepFailed(String keyword, String text) => '    ✗ $keyword $text';
 
   /// Prints feature name if enabled.
   void printFeature(String name, [void Function(String)? printer]) {
@@ -87,8 +86,7 @@ class BddOutput {
   }
 
   /// Prints step if enabled.
-  void printStep(String keyword, String text,
-      [void Function(String)? printer]) {
+  void printStep(String keyword, String text, [void Function(String)? printer]) {
     if (showSteps) {
       (printer ?? _print)(formatStep(keyword, text));
     }

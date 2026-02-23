@@ -104,8 +104,7 @@ void main() {
         });
 
         final resolver = SchemeResolver()
-          ..register(
-              't', createArbTranslationHandler('lib/l10n/en.arb', source: source));
+          ..register('t', createArbTranslationHandler('lib/l10n/en.arb', source: source));
 
         final result = await resolver.resolve('{t:sessionTitle}');
 

@@ -16,8 +16,7 @@ void main() {
           onEvent: (event) => events.add(event.toString()),
         );
 
-        reporter.onFeatureStart(
-            ReportFeature(name: 'Feature 1', path: 'a.feature'));
+        reporter.onFeatureStart(ReportFeature(name: 'Feature 1', path: 'a.feature'));
         reporter.onScenarioStart(ReportScenario(name: 'Scenario A', tags: []));
         reporter.onStepStart(ReportStep(keyword: 'Given', text: 'something'));
         reporter.onStepComplete(
@@ -50,8 +49,7 @@ void main() {
           onComplete: (results) => reports.add(results.toString()),
         );
 
-        reporter.onFeatureStart(
-            ReportFeature(name: 'Feature 1', path: 'a.feature'));
+        reporter.onFeatureStart(ReportFeature(name: 'Feature 1', path: 'a.feature'));
         reporter.onScenarioStart(ReportScenario(name: 'Scenario A', tags: []));
         reporter.onStepComplete(
           ReportStep(keyword: 'Given', text: 'something'),
@@ -84,8 +82,7 @@ void main() {
           onSummary: (summary) => summaries.add(summary.toString()),
         );
 
-        reporter.onFeatureStart(
-            ReportFeature(name: 'Feature 1', path: 'a.feature'));
+        reporter.onFeatureStart(ReportFeature(name: 'Feature 1', path: 'a.feature'));
         reporter.onScenarioComplete(
           ReportScenario(name: 'Scenario A', tags: []),
           ScenarioResult.passed(),
@@ -124,8 +121,7 @@ void main() {
 
         final composite = CompositeReporter([reporter1, reporter2]);
 
-        composite.onFeatureStart(
-            ReportFeature(name: 'Feature 1', path: 'a.feature'));
+        composite.onFeatureStart(ReportFeature(name: 'Feature 1', path: 'a.feature'));
 
         expect(events1.length, 1);
         expect(events2.length, 1);
@@ -304,32 +300,26 @@ void main() {
           path: 'features/session/management.feature',
         ));
         reporter.onFeatureComplete(
-          ReportFeature(
-              name: 'Session Management',
-              path: 'features/session/management.feature'),
+          ReportFeature(name: 'Session Management', path: 'features/session/management.feature'),
           FeatureResult.passed(),
         );
         reporter.flush();
 
         // Flat file structure in features subfolder: features/session/management.feature -> features/features_session_management.md
-        final file =
-            File('${tempDir.path}/features/features_session_management.md');
+        final file = File('${tempDir.path}/features/features_session_management.md');
         expect(await file.exists(), isTrue);
       });
 
-      test('creates only root index file on flush (no directory indexes)',
-          () async {
+      test('creates only root index file on flush (no directory indexes)', () async {
         final reporter = MarkdownFileReporter(outputDir: tempDir.path);
 
-        reporter.onFeatureStart(
-            ReportFeature(name: 'Login', path: 'auth/login.feature'));
+        reporter.onFeatureStart(ReportFeature(name: 'Login', path: 'auth/login.feature'));
         reporter.onFeatureComplete(
           ReportFeature(name: 'Login', path: 'auth/login.feature'),
           FeatureResult.passed(),
         );
 
-        reporter.onFeatureStart(
-            ReportFeature(name: 'Logout', path: 'auth/logout.feature'));
+        reporter.onFeatureStart(ReportFeature(name: 'Logout', path: 'auth/logout.feature'));
         reporter.onFeatureComplete(
           ReportFeature(name: 'Logout', path: 'auth/logout.feature'),
           FeatureResult.passed(),
@@ -351,8 +341,7 @@ void main() {
         expect(content, contains('Logout'));
       });
 
-      test('cleans output directory before writing when cleanFirst is true',
-          () async {
+      test('cleans output directory before writing when cleanFirst is true', () async {
         // Create existing file
         final existingFile = File('${tempDir.path}/old_report.md');
         await existingFile.create(recursive: true);
@@ -363,8 +352,7 @@ void main() {
           cleanFirst: true,
         );
 
-        reporter
-            .onFeatureStart(ReportFeature(name: 'New', path: 'new.feature'));
+        reporter.onFeatureStart(ReportFeature(name: 'New', path: 'new.feature'));
         reporter.onFeatureComplete(
           ReportFeature(name: 'New', path: 'new.feature'),
           FeatureResult.passed(),
@@ -377,10 +365,8 @@ void main() {
       test('marks passed scenario steps with checkmark emoji', () async {
         final reporter = MarkdownFileReporter(outputDir: tempDir.path);
 
-        reporter
-            .onFeatureStart(ReportFeature(name: 'Test', path: 'test.feature'));
-        reporter
-            .onScenarioStart(ReportScenario(name: 'Passing Test', tags: []));
+        reporter.onFeatureStart(ReportFeature(name: 'Test', path: 'test.feature'));
+        reporter.onScenarioStart(ReportScenario(name: 'Passing Test', tags: []));
         reporter.onStepComplete(
           ReportStep(keyword: 'Given', text: 'something'),
           StepResult.passed(Duration.zero),
@@ -395,8 +381,7 @@ void main() {
         );
         reporter.flush();
 
-        final content =
-            await File('${tempDir.path}/features/test.md').readAsString();
+        final content = await File('${tempDir.path}/features/test.md').readAsString();
         // Given uses clipboard icon 📋
         expect(content, contains('📋'));
         expect(content, contains('Passing Test'));
@@ -405,10 +390,8 @@ void main() {
       test('marks failed scenario steps with X emoji', () async {
         final reporter = MarkdownFileReporter(outputDir: tempDir.path);
 
-        reporter
-            .onFeatureStart(ReportFeature(name: 'Test', path: 'test.feature'));
-        reporter
-            .onScenarioStart(ReportScenario(name: 'Failing Test', tags: []));
+        reporter.onFeatureStart(ReportFeature(name: 'Test', path: 'test.feature'));
+        reporter.onScenarioStart(ReportScenario(name: 'Failing Test', tags: []));
         reporter.onStepComplete(
           ReportStep(keyword: 'Then', text: 'bad step'),
           StepResult.failed(Duration.zero, 'error'),
@@ -423,8 +406,7 @@ void main() {
         );
         reporter.flush();
 
-        final content =
-            await File('${tempDir.path}/features/test.md').readAsString();
+        final content = await File('${tempDir.path}/features/test.md').readAsString();
         // Failed step shows ❌ after text
         expect(content, contains('❌'));
         expect(content, contains('Failing Test'));
@@ -433,15 +415,13 @@ void main() {
       test('includes tags in scenario header', () async {
         final reporter = MarkdownFileReporter(outputDir: tempDir.path);
 
-        reporter.onFeatureStart(
-            ReportFeature(name: 'Tagged', path: 'tagged.feature'));
+        reporter.onFeatureStart(ReportFeature(name: 'Tagged', path: 'tagged.feature'));
         reporter.onScenarioStart(ReportScenario(
           name: 'Tagged Scenario',
           tags: ['@smoke', '@regression'],
         ));
         reporter.onScenarioComplete(
-          ReportScenario(
-              name: 'Tagged Scenario', tags: ['@smoke', '@regression']),
+          ReportScenario(name: 'Tagged Scenario', tags: ['@smoke', '@regression']),
           ScenarioResult.passed(),
         );
         reporter.onFeatureComplete(
@@ -450,8 +430,7 @@ void main() {
         );
         reporter.flush();
 
-        final content =
-            await File('${tempDir.path}/features/tagged.md').readAsString();
+        final content = await File('${tempDir.path}/features/tagged.md').readAsString();
         expect(content, contains('@smoke'));
         expect(content, contains('@regression'));
       });
@@ -464,8 +443,7 @@ void main() {
           path: 'user_login.feature',
         ));
         reporter.onFeatureComplete(
-          ReportFeature(
-              name: 'User Can Log In Successfully', path: 'user_login.feature'),
+          ReportFeature(name: 'User Can Log In Successfully', path: 'user_login.feature'),
           FeatureResult.passed(),
         );
         reporter.flush();
@@ -645,8 +623,7 @@ void main() {
         final stepLine = lines.firstWhere((l) => l.contains('Given'));
 
         // Step should be more indented than scenario
-        final scenarioIndent =
-            scenarioLine.indexOf(RegExp(r'\S')); // First non-space
+        final scenarioIndent = scenarioLine.indexOf(RegExp(r'\S')); // First non-space
         final stepIndent = stepLine.indexOf(RegExp(r'\S'));
         expect(stepIndent, greaterThan(scenarioIndent));
       });
@@ -702,8 +679,7 @@ void main() {
 
         expect(written.containsKey('local_ignored/bdd_report.md'), isTrue);
         expect(written['local_ignored/bdd_report.md'], contains('# Login'));
-        expect(
-            written['local_ignored/bdd_report.md'], contains('## Valid login'));
+        expect(written['local_ignored/bdd_report.md'], contains('## Valid login'));
       });
 
       test('writes markdown with passed step checkmarks', () {

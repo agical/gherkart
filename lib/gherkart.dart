@@ -71,8 +71,11 @@ export 'src/bdd_output.dart' show BddOutput;
 export 'src/bdd_reporter.dart'
     show
         BddReporter,
+        BufferedFeature,
         BufferedReporter,
         BufferedResults,
+        BufferedScenario,
+        BufferedStep,
         CompositeReporter,
         ContinuousReporter,
         FeatureResult,
@@ -117,25 +120,12 @@ export 'src/feature_parser.dart'
         discoverFeatureFiles,
         parseFeature,
         parseFeatureFile;
-export 'src/feature_source.dart'
-    show AssetSource, FeatureSource, FeatureSourceException;
+export 'src/feature_source.dart' show AssetSource, FeatureSource, FeatureSourceException;
 export 'src/feature_test_factory.dart'
-    show
-        FeatureTestFactory,
-        MissingStepsException,
-        TestCase,
-        TestGroup,
-        TestPlan,
-        TestStructure;
+    show FeatureTestFactory, MissingStepsException, TestCase, TestGroup, TestPlan, TestStructure;
 export 'src/line_mapper.dart' show LineMapper, StringLineMapper;
 export 'src/markdown_file_reporter.dart' show MarkdownFileReporter;
-export 'src/scheme_resolver.dart'
-    show ResolvedParam, SchemeHandler, SchemeResolver;
-export 'src/step_registry.dart'
-    show StepContext, StepFunction, StepMatch, StepRegistry;
+export 'src/scheme_resolver.dart' show ResolvedParam, SchemeHandler, SchemeResolver;
+export 'src/step_registry.dart' show StepContext, StepFunction, StepMatch, StepRegistry;
 export 'src/translation_scheme.dart'
-    show
-        createArbTranslationHandler,
-        createKeyMappingHandler,
-        createMapTranslationHandler,
-        createTranslationHandler;
+    show createArbTranslationHandler, createKeyMappingHandler, createMapTranslationHandler, createTranslationHandler;

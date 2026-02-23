@@ -58,12 +58,12 @@ analyze:
 # Format code
 [group('quality')]
 format:
-    dart format --page-width=120 lib test
+    dart format --page-width=120 lib test example
 
 # Check formatting without modifying
 [group('quality')]
 format-check:
-    dart format --page-width=120 --set-exit-if-changed lib test
+    dart format --page-width=120 --set-exit-if-changed lib test example
 
 # Fix auto-fixable issues
 [group('quality')]
@@ -103,3 +103,8 @@ clean:
 [group('dev')]
 check: format-check analyze test-all
     @echo "✅ All checks passed"
+
+# Run full CI pipeline locally (checks + coverage)
+[group('dev')]
+ci: check test-coverage
+    @echo "✅ Full CI pipeline passed"

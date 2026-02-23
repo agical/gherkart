@@ -113,8 +113,7 @@ void main() {
         );
       });
 
-      test('returns single file when listing .feature path without lister',
-          () async {
+      test('returns single file when listing .feature path without lister', () async {
         final source = AssetSource.fromLoader((path) async => 'content');
 
         final files = await source.list('test.feature');

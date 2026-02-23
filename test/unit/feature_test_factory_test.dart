@@ -69,8 +69,7 @@ void main() {
           background: Background(
             steps: [
               Step(keyword: StepKeyword.given, text: 'the app is running'),
-              Step(
-                  keyword: StepKeyword.and, text: 'I have an imported session'),
+              Step(keyword: StepKeyword.and, text: 'I have an imported session'),
             ],
           ),
           scenarios: [
@@ -90,8 +89,7 @@ void main() {
         expect(plan.groups, hasLength(1));
         expect(plan.groups[0].backgroundSteps, hasLength(2));
         expect(plan.groups[0].backgroundSteps[0].text, 'the app is running');
-        expect(plan.groups[0].backgroundSteps[1].text,
-            'I have an imported session');
+        expect(plan.groups[0].backgroundSteps[1].text, 'I have an imported session');
       });
 
       test('tree structure nests by folder', () {
@@ -177,8 +175,7 @@ void main() {
           final plan = factory.buildTestPlan([feature]);
 
           // Scenario with its own tags should have merged tags
-          expect(plan.groups[0].tests[0].tags,
-              containsAll(['wip', 'users', 'create']));
+          expect(plan.groups[0].tests[0].tags, containsAll(['wip', 'users', 'create']));
           // Scenario without tags should inherit feature tags
           expect(plan.groups[0].tests[1].tags, containsAll(['wip', 'users']));
         });
@@ -205,8 +202,7 @@ void main() {
           final plan = factory.buildTestPlan([feature]);
 
           // Should not have duplicate 'wip' tags
-          expect(
-              plan.groups[0].tests[0].tags.where((t) => t == 'wip').length, 1);
+          expect(plan.groups[0].tests[0].tags.where((t) => t == 'wip').length, 1);
         });
       });
     });
