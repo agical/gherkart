@@ -73,8 +73,7 @@ void main() {
 
     group('Type conversions', () {
       test('converts int parameter', () {
-        final mapper =
-            'I wait {seconds} seconds'.mapper(types: {'seconds': int});
+        final mapper = 'I wait {seconds} seconds'.mapper(types: {'seconds': int});
         final result = mapper('I wait 5 seconds');
 
         expect(result, isNotNull);
@@ -118,8 +117,7 @@ void main() {
       });
 
       test('converts mixed types', () {
-        final mapper = 'I wait {seconds} seconds then enter {text}'
-            .mapper(types: {'seconds': int});
+        final mapper = 'I wait {seconds} seconds then enter {text}'.mapper(types: {'seconds': int});
         final result = mapper('I wait 10 seconds then enter hello');
 
         expect(result, isNotNull);

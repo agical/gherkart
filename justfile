@@ -58,12 +58,12 @@ analyze:
 # Format code
 [group('quality')]
 format:
-    dart format --page-width=120 lib test
+    dart format --page-width=120 lib test example
 
 # Check formatting without modifying
 [group('quality')]
 format-check:
-    dart format --page-width=120 --set-exit-if-changed lib test
+    dart format --page-width=120 --set-exit-if-changed lib test example
 
 # Fix auto-fixable issues
 [group('quality')]

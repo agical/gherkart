@@ -21,12 +21,10 @@ class BddHooks<T> {
   final FutureOr<void> Function()? afterAll;
 
   /// Called before each scenario.
-  final FutureOr<void> Function(String scenarioName, List<String> tags)?
-      beforeEach;
+  final FutureOr<void> Function(String scenarioName, List<String> tags)? beforeEach;
 
   /// Called after each scenario.
-  final FutureOr<void> Function(
-      String scenarioName, bool success, List<String> tags)? afterEach;
+  final FutureOr<void> Function(String scenarioName, bool success, List<String> tags)? afterEach;
 
   const BddHooks({
     this.beforeAll,
@@ -271,8 +269,7 @@ class BddTestRunner<T> {
 
     for (var i = 0; i < plan.groups.length; i++) {
       final testGroup = plan.groups[i];
-      final feature =
-          _features != null && i < _features!.length ? _features![i] : null;
+      final feature = _features != null && i < _features!.length ? _features![i] : null;
       _runGroup(testGroup, feature: feature);
     }
   }
@@ -377,9 +374,7 @@ class BddTestRunner<T> {
         } finally {
           // Report scenario end
           if (reporter != null && _currentScenario != null) {
-            final result = success
-                ? ScenarioResult.passed()
-                : ScenarioResult.failed('Scenario failed');
+            final result = success ? ScenarioResult.passed() : ScenarioResult.failed('Scenario failed');
             reporter!.onScenarioComplete(_currentScenario!, result);
           }
           if (hooks.afterEach != null) {
@@ -391,8 +386,7 @@ class BddTestRunner<T> {
   }
 
   Future<void> _runStep(T context, Step step) async {
-    final keyword =
-        step.keyword.name[0].toUpperCase() + step.keyword.name.substring(1);
+    final keyword = step.keyword.name[0].toUpperCase() + step.keyword.name.substring(1);
     final stopwatch = Stopwatch()..start();
     final locationInfo = step.location != null ? ' at ${step.location}' : '';
 

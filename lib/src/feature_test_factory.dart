@@ -184,8 +184,7 @@ class TestGroup {
     this.backgroundSteps = const [],
   });
 
-  int get totalTests =>
-      tests.length + children.fold(0, (sum, c) => sum + c.totalTests);
+  int get totalTests => tests.length + children.fold(0, (sum, c) => sum + c.totalTests);
 }
 
 /// A single test case (corresponds to a Gherkin Scenario).
@@ -208,7 +207,6 @@ class MissingStepsException implements Exception {
   MissingStepsException(this.missingSteps);
 
   @override
-  String toString() =>
-      'MissingStepsException: ${missingSteps.length} step(s) not found:\n'
+  String toString() => 'MissingStepsException: ${missingSteps.length} step(s) not found:\n'
       '${missingSteps.map((s) => '  - ${s.location}: ${s.text}').join('\n')}';
 }

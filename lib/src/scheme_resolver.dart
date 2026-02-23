@@ -48,8 +48,7 @@ class ResolvedParam {
   bool get hasScheme => scheme != null;
 
   @override
-  String toString() =>
-      hasScheme ? '$scheme:$value -> $resolved' : 'literal: $value';
+  String toString() => hasScheme ? '$scheme:$value -> $resolved' : 'literal: $value';
 }
 
 /// Resolves parameter schemes to their actual values.

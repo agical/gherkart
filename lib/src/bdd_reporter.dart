@@ -72,8 +72,7 @@ class ReportScenario {
   });
 
   @override
-  String toString() =>
-      'ReportScenario($name, tags: $tags, outline: $isOutlineInstance)';
+  String toString() => 'ReportScenario($name, tags: $tags, outline: $isOutlineInstance)';
 }
 
 /// Metadata about a step being reported.
@@ -261,8 +260,7 @@ class StepCompleteEvent extends ReporterEvent {
   StepCompleteEvent(this.step, this.result);
 
   @override
-  String toString() =>
-      'StepComplete: ${step.keyword} ${step.text} (${result.status})';
+  String toString() => 'StepComplete: ${step.keyword} ${step.text} (${result.status})';
 }
 
 /// Reports events immediately as they occur.
@@ -272,16 +270,13 @@ class ContinuousReporter implements BddReporter {
   ContinuousReporter({required this.onEvent});
 
   @override
-  void onFeatureStart(ReportFeature feature) =>
-      onEvent(FeatureStartEvent(feature));
+  void onFeatureStart(ReportFeature feature) => onEvent(FeatureStartEvent(feature));
 
   @override
-  void onFeatureComplete(ReportFeature feature, FeatureResult result) =>
-      onEvent(FeatureCompleteEvent(feature, result));
+  void onFeatureComplete(ReportFeature feature, FeatureResult result) => onEvent(FeatureCompleteEvent(feature, result));
 
   @override
-  void onScenarioStart(ReportScenario scenario) =>
-      onEvent(ScenarioStartEvent(scenario));
+  void onScenarioStart(ReportScenario scenario) => onEvent(ScenarioStartEvent(scenario));
 
   @override
   void onScenarioComplete(ReportScenario scenario, ScenarioResult result) =>
@@ -291,8 +286,7 @@ class ContinuousReporter implements BddReporter {
   void onStepStart(ReportStep step) => onEvent(StepStartEvent(step));
 
   @override
-  void onStepComplete(ReportStep step, StepResult result) =>
-      onEvent(StepCompleteEvent(step, result));
+  void onStepComplete(ReportStep step, StepResult result) => onEvent(StepCompleteEvent(step, result));
 
   @override
   void flush() {
@@ -717,8 +711,7 @@ class FileReporter implements BddReporter {
     buffer.writeln();
     buffer.writeln('## Summary');
     buffer.writeln();
-    buffer.writeln(
-        '${_features.length} feature${_features.length == 1 ? '' : 's'}, '
+    buffer.writeln('${_features.length} feature${_features.length == 1 ? '' : 's'}, '
         '$scenarioCount scenario${scenarioCount == 1 ? '' : 's'}');
 
     final content = buffer.toString();

@@ -104,8 +104,7 @@ void main() {
 
     group('suggestPlaceholder', () {
       test('generates placeholder for simple step', () {
-        final suggestion =
-            StepRegistry.suggestPlaceholder('the app is running');
+        final suggestion = StepRegistry.suggestPlaceholder('the app is running');
 
         expect(suggestion, contains("'the app is running'.mapper()"));
         expect(suggestion, contains('(\$, ctx) async'));
@@ -113,16 +112,14 @@ void main() {
       });
 
       test('generates placeholder with detected string parameter', () {
-        final suggestion =
-            StepRegistry.suggestPlaceholder('I navigate to "Sessions"');
+        final suggestion = StepRegistry.suggestPlaceholder('I navigate to "Sessions"');
 
         expect(suggestion, contains('{page}'));
         expect(suggestion, contains('ctx.arg<String>(0)'));
       });
 
       test('generates placeholder with multiple string parameters', () {
-        final suggestion =
-            StepRegistry.suggestPlaceholder('I set "name" to "value"');
+        final suggestion = StepRegistry.suggestPlaceholder('I set "name" to "value"');
 
         expect(suggestion, contains('{page}'));
         expect(suggestion, contains('{param2}'));

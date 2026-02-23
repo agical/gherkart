@@ -131,10 +131,7 @@ class AssetSource implements FeatureSource {
       // Directory - find all matching features
       final prefix = path.endsWith('/') ? path : '$path/';
       return _features.keys
-          .where((key) =>
-              key.startsWith(prefix) ||
-              key == path ||
-              (path.isEmpty && key.endsWith('.feature')))
+          .where((key) => key.startsWith(prefix) || key == path || (path.isEmpty && key.endsWith('.feature')))
           .where((key) => key.endsWith('.feature'))
           .toList()
         ..sort();
