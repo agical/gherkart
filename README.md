@@ -377,6 +377,56 @@ await runBddTests<void>(
 | `createTranslationHandler`       | Sync lookup function      |
 | `createKeyMappingHandler`        | Widget key name → value   |
 
+### Using Scheme Handlers in Widget Tests
+
+#### The Problem
+
+`testWidgets` (and `patrolWidgetTest`) runs test callbacks inside Flutter's `FakeAsync` zone. Real `dart:io` operations like `File.readAsString()` **never complete** inside `FakeAsync` because it doesn't process the real I/O event loop.
+
+Scheme handlers are called during step execution — inside the test callback, inside `FakeAsync`. Any handler that performs file I/O (such as `createArbTranslationHandler`, which lazily reads the ARB file on first `{t:key}` resolution) will cause an infinite hang.
+
+Note: Feature file reading happens in `main()` via `runBddTests` / `BddTestRunner.run()`, so `FileSystemSource` is **not** affected.
+
+#### Recommended Pattern
+
+Pre-read any files in `main()` (which runs outside `FakeAsync`) and pass the data to your scheme handler:
+
+```dart
+import 'dart:convert';
+import 'dart:io';
+
+Future<void> main() async {
+  // Read ARB here in main() — outside the FakeAsync zone.
+  // testWidgets callbacks run inside FakeAsync where dart:io never completes.
+  final arbContent = await File('lib/l10n/en.arb').readAsString();
+  final arbMap = (json.decode(arbContent) as Map<String, dynamic>)
+      .cast<String, String>();
+
+  final schemeResolver = SchemeResolver()
+    ..register('t', createMapTranslationHandler(arbMap));
+
+  await runBddTests(
+    schemeResolver: schemeResolver,
+    // ...
+  );
+}
+```
+
+#### Why not `createArbTranslationHandler`?
+
+| Handler | Reads file | Safe in FakeAsync |
+|---------|-----------|-------------------|
+| `createArbTranslationHandler` | Lazily, on first `{t:key}` use | **No** — hangs forever |
+| `createMapTranslationHandler` | Never (you provide the map) | **Yes** |
+
+`createArbTranslationHandler` is fine for CLI tools or integration tests that run in a real async zone. For widget tests, always use `createMapTranslationHandler` with a pre-loaded map.
+
+The same applies to any custom scheme handler: if it does file I/O, do the reading in `main()` and pass the result into the handler.
+
+#### Rule of thumb
+
+**Any dart:io in `main()` → safe. Any dart:io inside a scheme handler or test callback → hangs in FakeAsync.**
+
 ## Output Verbosity
 
 > Example: [example/data_tables_test.dart](example/data_tables_test.dart) uses `BddOutput.verbose()`,
