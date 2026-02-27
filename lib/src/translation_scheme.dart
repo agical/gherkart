@@ -9,8 +9,12 @@
 ///
 /// Usage in feature files:
 /// ```gherkin
-/// Then I see "{t:sessionTitle}"     # Uses translation key
+/// Then I see "{t:sessionTitle}"       # Simple key lookup
+/// Then I see "{t:shotLabel(shots: 1)}" # Parameterized lookup
 /// ```
+///
+/// When parameters are provided, `{paramName}` placeholders in the
+/// resolved string are substituted with the supplied values.
 ///
 /// Usage in test setup:
 /// ```dart
@@ -41,6 +45,7 @@ import 'scheme_resolver.dart';
 /// Then in feature file:
 /// ```gherkin
 /// Then I see "{t:sessionTitle}"
+/// Then I see "{t:greeting(name: Alice)}"  # with parameter substitution
 /// ```
 ///
 /// Uses [FeatureSource] to read the ARB file, allowing it to work
@@ -78,8 +83,7 @@ SchemeHandler createArbTranslationHandler(
     }
     if (value is! String) {
       throw ArgumentError(
-        'Translation key "$key" is not a simple string. '
-        'Parameterized translations not yet supported.',
+        'Translation key "$key" is not a string value in $arbFilePath.',
       );
     }
     return value;

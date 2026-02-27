@@ -26,7 +26,7 @@ Parse Gherkin `.feature` files at runtime — no code generation required.
 | Multiple sources | `FileSystemSource` (disk) or `AssetSource` (in-memory / web) |
 | Registry merging | Compose step registries from separate modules |
 | Scheme resolution | `{t:translationKey}` parameter schemes for i18n and key lookup |
-| Translation handlers | ARB file, map, or function-based lookup |
+| Translation handlers | ARB file, map, or function-based lookup with parameterized values |
 | Configurable output | Silent → scenario names → steps → verbose with timing |
 | Reporting system | `SummaryReporter`, `BufferedReporter`, `MarkdownFileReporter`, composable |
 | Test structure | Tree (nested by directory) or flat grouping |
@@ -341,14 +341,23 @@ final source = AssetSource.fromLoader((path) async {
 
 > Example: [example/scheme_test.dart](example/scheme_test.dart) +
 > [example/features/scheme.feature](example/features/scheme.feature)
+>
+> Parameterized example: [example/parameterized_translation_test.dart](example/parameterized_translation_test.dart) +
+> [example/features/parameterized_translation.feature](example/features/parameterized_translation.feature)
 
 Transform parameter values before they reach step functions using scheme prefixes:
 
 ```gherkin
-Then I see the text "{t:hello}"      # Translation key → resolved string
-Then I see the text "{t:goodbye}"    # Another translation key
-Then I see the text "plain text"     # Literal (no scheme)
+Then I see the text "{t:hello}"                                # Simple key lookup
+Then I see the text "{t:shotLabel(shots: 1)}"                  # Parameterized: "1 shot(s)"
+Then I see the text "{t:greeting(name: 'Alice', time: 'morning')}"  # Multiple params
+Then I see the text "plain text"                               # Literal (no scheme)
 ```
+
+When parameters are provided with `{t:key(param: value)}` syntax, the key
+and a `Map<String, String>` of parameters are passed to the scheme handler,
+which resolves the final value. String values should be single-quoted;
+unquoted values (like numbers) are kept as-is.
 
 ### Registering Scheme Handlers
 
@@ -359,6 +368,8 @@ final resolver = SchemeResolver()
     createMapTranslationHandler({
       'hello': 'Hello, World!',
       'goodbye': 'See you later!',
+      'shotLabel': '{shots} shot(s)',          // parameterized
+      'greeting': 'Good {time}, {name}!',     // multiple placeholders
     }),
   );
 

@@ -113,5 +113,96 @@ void main() {
         expect(result.resolved, 'Sessions');
       });
     });
+
+    group('parameterized translations with map handler', () {
+      test('substitutes single placeholder in map translation', () async {
+        final resolver = SchemeResolver()
+          ..register(
+              't',
+              createMapTranslationHandler({
+                'shotLabel': '{shots} shot(s)',
+              }));
+
+        final result = await resolver.resolve('{t:shotLabel(shots: 3)}');
+
+        expect(result.resolved, '3 shot(s)');
+      });
+
+      test('substitutes multiple placeholders in map translation', () async {
+        final resolver = SchemeResolver()
+          ..register(
+              't',
+              createMapTranslationHandler({
+                'greeting': 'Good {time}, {name}!',
+              }));
+
+        final result = await resolver.resolve('{t:greeting(name: \'Alice\', time: \'morning\')}');
+
+        expect(result.resolved, 'Good morning, Alice!');
+      });
+
+      test('plain key still works alongside parameterized key', () async {
+        final resolver = SchemeResolver()
+          ..register(
+              't',
+              createMapTranslationHandler({
+                'hello': 'Hello, World!',
+                'shotLabel': '{shots} shot(s)',
+              }));
+
+        final plain = await resolver.resolve('{t:hello}');
+        final parameterized = await resolver.resolve('{t:shotLabel(shots: 1)}');
+
+        expect(plain.resolved, 'Hello, World!');
+        expect(parameterized.resolved, '1 shot(s)');
+      });
+    });
+
+    group('parameterized translations with ARB handler', () {
+      test('substitutes placeholders in ARB translation', () async {
+        final source = AssetSource.fromMap({
+          'test.arb': '''
+{
+  "@@locale": "en",
+  "shotLabel": "{shots} shot(s)",
+  "@shotLabel": {
+    "placeholders": {
+      "shots": {"type": "int"}
+    }
+  }
+}
+''',
+        });
+
+        final resolver = SchemeResolver()..register('t', createArbTranslationHandler('test.arb', source: source));
+
+        final result = await resolver.resolve('{t:shotLabel(shots: 2)}');
+
+        expect(result.resolved, '2 shot(s)');
+      });
+
+      test('substitutes multiple placeholders in ARB translation', () async {
+        final source = AssetSource.fromMap({
+          'test.arb': '''
+{
+  "@@locale": "en",
+  "greeting": "Good {time}, {name}!",
+  "@greeting": {
+    "placeholders": {
+      "name": {"type": "String"},
+      "time": {"type": "String"}
+    }
+  }
+}
+''',
+        });
+
+        final resolver = SchemeResolver()..register('t', createArbTranslationHandler('test.arb', source: source));
+
+        final result = await resolver.resolve('{t:greeting(name: \'Bob\', time: \'evening\')}');
+
+        expect(result.resolved, 'Good evening, Bob!');
+      });
+    });
   });
 }

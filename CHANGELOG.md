@@ -1,5 +1,15 @@
 # Changelog
 
+## Unreleased
+
+### Features
+
+- **Parameterized translations** — `{t:key(param: value)}` syntax for passing
+  parameters to scheme handlers. The handler receives the key and a
+  `Map<String, String>` of parameters and resolves the final value.
+  Works with ARB, map, and custom translation handlers.
+- `ResolvedParam` now exposes a `params` field with parsed parameters
+
 ## 0.1.4
 
 ### Improvements
