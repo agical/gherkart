@@ -13,8 +13,9 @@
 /// Then I see "{t:shotLabel(shots: 1)}" # Parameterized lookup
 /// ```
 ///
-/// When parameters are provided, `{paramName}` placeholders in the
-/// resolved string are substituted with the supplied values.
+/// When parameters are provided, the handler substitutes `{paramName}`
+/// placeholders in the resolved string with the supplied values.
+/// Custom handlers may use different placeholder syntax as needed.
 ///
 /// Usage in test setup:
 /// ```dart
@@ -57,7 +58,7 @@ SchemeHandler createArbTranslationHandler(
   // Lazily load and cache the ARB file content
   Map<String, dynamic>? cachedArb;
 
-  return (String key) async {
+  return (String key, Map<String, String> params) async {
     if (cachedArb == null) {
       // Use provided source or default to file system
       final effectiveSource = source;
@@ -86,7 +87,7 @@ SchemeHandler createArbTranslationHandler(
         'Translation key "$key" is not a string value in $arbFilePath.',
       );
     }
-    return value;
+    return _substitutePlaceholders(value, params);
   };
 }
 
@@ -94,7 +95,7 @@ SchemeHandler createArbTranslationHandler(
 ///
 /// Useful for tests that don't want to read from disk.
 SchemeHandler createMapTranslationHandler(Map<String, String> translations) {
-  return (String key) async {
+  return (String key, Map<String, String> params) async {
     final value = translations[key];
     if (value == null) {
       throw ArgumentError(
@@ -102,7 +103,7 @@ SchemeHandler createMapTranslationHandler(Map<String, String> translations) {
         'Available keys: ${translations.keys.take(10).join(", ")}...',
       );
     }
-    return value;
+    return _substitutePlaceholders(value, params);
   };
 }
 
@@ -116,7 +117,7 @@ SchemeHandler createMapTranslationHandler(Map<String, String> translations) {
 /// resolver.register('t', handler);
 /// ```
 SchemeHandler createTranslationHandler(String Function(String key) lookup) {
-  return (String key) async => lookup(key);
+  return (String key, Map<String, String> params) async => lookup(key);
 }
 
 /// Creates a key mapping handler for widget keys or identifiers.
@@ -129,5 +130,19 @@ SchemeHandler createTranslationHandler(String Function(String key) lookup) {
 /// resolver.register('k', handler);
 /// ```
 SchemeHandler createKeyMappingHandler(dynamic Function(String name) lookup) {
-  return (String name) async => lookup(name);
+  return (String name, Map<String, String> params) async => lookup(name);
+}
+
+/// Substitutes `{paramName}` placeholders in [template] with values from [params].
+///
+/// This is the default substitution strategy used by the built-in ARB and map
+/// translation handlers. Custom handlers may use a different strategy
+/// (e.g., `%{name}` for Phrase, `{{name}}` for i18next).
+String _substitutePlaceholders(String template, Map<String, String> params) {
+  if (params.isEmpty) return template;
+  var result = template;
+  for (final entry in params.entries) {
+    result = result.replaceAll('{${entry.key}}', entry.value);
+  }
+  return result;
 }

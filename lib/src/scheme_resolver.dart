@@ -6,9 +6,13 @@
 ///
 /// Allows parameters to use schemes like:
 /// - `{t:translation_key}` - resolve translation key to localized string
-/// - `{t:key(param: value)}` - resolve key and substitute placeholders
+/// - `{t:key(param: value)}` - resolve key with parameters
 /// - `{k:element_name}` - resolve to a ProjectKey for widget testing
 /// - Plain text - used as literal value
+///
+/// The resolver parses the key and parameters, then delegates to the
+/// registered [SchemeHandler] which receives both and decides how to
+/// resolve the final value.
 ///
 /// Example feature file:
 /// ```gherkin
@@ -21,9 +25,16 @@ library;
 
 /// Handler function that resolves a scheme value.
 ///
-/// Takes the value after the colon (e.g., "gameComplete" from "{t:gameComplete}")
-/// and returns the resolved value.
-typedef SchemeHandler = Future<dynamic> Function(String value);
+/// Receives the key (e.g., "gameComplete" from "{t:gameComplete}") and a
+/// map of parameters (e.g., {"shots": "1"} from "{t:shotLabel(shots: 1)}").
+///
+/// Each handler decides how to use the parameters — for example, an ARB
+/// handler substitutes `{placeholder}` tokens, while a Phrase handler
+/// might use `%{placeholder}` syntax.
+typedef SchemeHandler = Future<dynamic> Function(
+  String key,
+  Map<String, String> params,
+);
 
 /// Resolved parameter with its scheme info.
 class ResolvedParam {
@@ -134,14 +145,7 @@ class SchemeResolver {
       params = const {};
     }
 
-    var resolved = await handler(key);
-
-    // Substitute {paramName} placeholders in the resolved string
-    if (params.isNotEmpty && resolved is String) {
-      for (final entry in params.entries) {
-        resolved = (resolved as String).replaceAll('{${entry.key}}', entry.value);
-      }
-    }
+    var resolved = await handler(key, params);
 
     return ResolvedParam(
       original: param,
@@ -205,7 +209,7 @@ class SchemeResolver {
 SchemeHandler createTranslationHandler(
   String Function(String key) translator,
 ) {
-  return (String key) async => translator(key);
+  return (String key, Map<String, String> params) async => translator(key);
 }
 
 /// Creates a key mapping scheme handler.
@@ -217,5 +221,5 @@ SchemeHandler createTranslationHandler(
 SchemeHandler createKeyMappingHandler(
   dynamic Function(String name) mapper,
 ) {
-  return (String name) async => mapper(name);
+  return (String name, Map<String, String> params) async => mapper(name);
 }

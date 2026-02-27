@@ -14,8 +14,8 @@ void main() {
           'farewell': 'Goodbye!',
         });
 
-        expect(await handler('greeting'), 'Hello!');
-        expect(await handler('farewell'), 'Goodbye!');
+        expect(await handler('greeting', {}), 'Hello!');
+        expect(await handler('farewell', {}), 'Goodbye!');
       });
 
       test('throws on unknown key', () async {
@@ -24,7 +24,7 @@ void main() {
         });
 
         expect(
-          () => handler('unknown'),
+          () => handler('unknown', {}),
           throwsA(isA<ArgumentError>().having(
             (e) => e.message,
             'message',
@@ -49,8 +49,8 @@ void main() {
 
         final handler = createArbTranslationHandler('test.arb', source: source);
 
-        expect(await handler('sessionTitle'), 'Sessions');
-        expect(await handler('homeWelcome'), 'Welcome to Beer Pong');
+        expect(await handler('sessionTitle', {}), 'Sessions');
+        expect(await handler('homeWelcome', {}), 'Welcome to Beer Pong');
       });
 
       test('throws on unknown key with AssetSource', () async {
@@ -66,7 +66,7 @@ void main() {
         final handler = createArbTranslationHandler('test.arb', source: source);
 
         expect(
-          () => handler('unknownKey'),
+          () => handler('unknownKey', {}),
           throwsA(isA<ArgumentError>().having(
             (e) => e.message,
             'message',
