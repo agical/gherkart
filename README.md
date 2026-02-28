@@ -344,12 +344,18 @@ final source = AssetSource.fromLoader((path) async {
 >
 > Parameterized example: [example/parameterized_translation_test.dart](example/parameterized_translation_test.dart) +
 > [example/features/parameterized_translation.feature](example/features/parameterized_translation.feature)
+>
+> Plural example (map): [example/plural_translation_test.dart](example/plural_translation_test.dart) +
+> [example/features/plural_translation.feature](example/features/plural_translation.feature)
+>
+> Plural example (ARB): [example/plural_translation_arb_test.dart](example/plural_translation_arb_test.dart) +
+> [example/features/plural_translation_arb.feature](example/features/plural_translation_arb.feature)
 
 Transform parameter values before they reach step functions using scheme prefixes:
 
 ```gherkin
 Then I see the text "{t:hello}"                                # Simple key lookup
-Then I see the text "{t:shotLabel(shots: 1)}"                  # Parameterized: "1 shot(s)"
+Then I see the text "{t:welcome(name: 'Alice')}"               # Parameterized: "Welcome, Alice!"
 Then I see the text "{t:greeting(name: 'Alice', time: 'morning')}"  # Multiple params
 Then I see the text "plain text"                               # Literal (no scheme)
 ```
@@ -358,6 +364,44 @@ When parameters are provided with `{t:key(param: value)}` syntax, the key
 and a `Map<String, String>` of parameters are passed to the scheme handler,
 which resolves the final value. String values should be single-quoted;
 unquoted values (like numbers) are kept as-is.
+
+### ICU Plural Support
+
+The built-in translation handlers (`createMapTranslationHandler` and
+`createArbTranslationHandler`) support ICU MessageFormat plural syntax:
+
+```gherkin
+# Feature file
+Then "{t:shotLabel(count: 0)}" is "no shots"
+Then "{t:shotLabel(count: 1)}" is "1 shot"
+Then "{t:shotLabel(count: 5)}" is "5 shots"
+```
+
+```dart
+final resolver = SchemeResolver()
+  ..register(
+    't',
+    createMapTranslationHandler({
+      'shotLabel': '{count, plural, =0{no shots} =1{1 shot} other{{count} shots}}',
+    }),
+  );
+```
+
+Supported plural features:
+
+| Syntax | Description |
+|--------|---------------------------------------------|
+| `=0`, `=1`, `=N` | Exact numeric match |
+| `other` | Fallback when no exact match is found |
+| `{param}` | Substituted with the parameter value inside a plural branch |
+| `#` | Shorthand for the plural parameter's value |
+
+Plurals can be mixed with regular `{param}` placeholders:
+
+```dart
+// "{t:userShots(name: 'Alice', count: 2)}" → "Alice scored 2 shots"
+'userShots': '{name} scored {count, plural, =0{nothing} =1{1 shot} other{{count} shots}}',
+```
 
 ### Registering Scheme Handlers
 
@@ -368,7 +412,7 @@ final resolver = SchemeResolver()
     createMapTranslationHandler({
       'hello': 'Hello, World!',
       'goodbye': 'See you later!',
-      'shotLabel': '{shots} shot(s)',          // parameterized
+      'welcome': 'Welcome, {name}!',          // parameterized
       'greeting': 'Good {time}, {name}!',     // multiple placeholders
     }),
   );

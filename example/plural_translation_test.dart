@@ -2,14 +2,15 @@
 // Use of this source code is governed by an MIT-style license that can be
 // found in the LICENSE file.
 
-/// Parameterized translation example.
+/// Plural translation example.
 ///
 /// Demonstrates:
-/// - `{t:key(param: value)}` syntax for parameterized translations
-/// - Placeholders in translation values get substituted with provided params
-/// - Backward-compatible with plain `{t:key}` syntax
+/// - ICU MessageFormat plural syntax in translation values
+/// - `=0`, `=1`, `other` form selection based on numeric parameter
+/// - `#` placeholder replaced with the numeric value
+/// - Mixed plural and regular `{param}` placeholders
 ///
-/// Run with: dart test example/parameterized_translation_test.dart
+/// Run with: dart test example/plural_translation_test.dart
 library;
 
 import 'package:gherkart/gherkart.dart';
@@ -20,7 +21,7 @@ import 'package:test/test.dart';
 // Steps
 // ---------------------------------------------------------------------------
 
-final paramTranslationSteps = StepRegistry<void>.fromMap({
+final _steps = StepRegistry<void>.fromMap({
   '"{actual}" is "{expected}"'.mapper(): ($, ctx) async {
     final actual = ctx.arg<String>(0);
     final expected = ctx.arg<String>(1);
@@ -29,16 +30,19 @@ final paramTranslationSteps = StepRegistry<void>.fromMap({
 });
 
 // ---------------------------------------------------------------------------
-// Scheme resolver with parameterized translations
+// Scheme resolver with ICU plural translations
 // ---------------------------------------------------------------------------
 
-final resolver = SchemeResolver()
+final _resolver = SchemeResolver()
   ..register(
     't',
     createMapTranslationHandler({
-      'welcome': 'Welcome, {name}!',
-      'greeting': 'Good {time}, {name}!',
-      'hello': 'Hello, World!',
+      'shotLabel':
+          '{count, plural, =0{no shots} =1{1 shot} other{{count} shots}}',
+      'itemCount':
+          '{count, plural, =0{no items} =1{# item} other{# items}}',
+      'userShots':
+          '{name} scored {count, plural, =0{nothing} =1{1 shot} other{{count} shots}}',
     }),
   );
 
@@ -48,10 +52,10 @@ final resolver = SchemeResolver()
 
 Future<void> main() async {
   await runBddTests<void>(
-    rootPaths: ['example/features/parameterized_translation.feature'],
-    registry: paramTranslationSteps,
+    rootPaths: ['example/features/plural_translation.feature'],
+    registry: _steps,
     source: FileSystemSource(),
-    schemeResolver: resolver,
+    schemeResolver: _resolver,
     adapter: _createTestAdapter(),
     output: const BddOutput.verbose(),
   );

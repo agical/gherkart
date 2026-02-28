@@ -3,15 +3,14 @@ Feature: Parameterized Translations
   into the resolved string, using the "{t:key(param: value)}" syntax.
 
   Scenario: Single parameter substitution
-    Then I see the text "{t:shotLabel(shots: 1)}"
-    And I see the text "{t:shotLabel(shots: 2)}"
+    Then "{t:welcome(name: 'Alice')}" is "Welcome, Alice!"
 
   Scenario: Multiple parameter substitution
-    Then I see the text "{t:greeting(name: 'Alice', time: 'morning')}"
+    Then "{t:greeting(name: 'Alice', time: 'morning')}" is "Good morning, Alice!"
 
   Scenario: Plain translation still works
-    Then I see the text "{t:hello}"
+    Then "{t:hello}" is "Hello, World!"
 
   Scenario: Mixed parameters and plain translations
-    Then I see the text "{t:hello}"
-    And I see the text "{t:shotLabel(shots: 3)}"
+    Then "{t:hello}" is "Hello, World!"
+    And "{t:welcome(name: 'Bob')}" is "Welcome, Bob!"
