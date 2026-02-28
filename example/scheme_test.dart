@@ -17,22 +17,14 @@ import 'package:gherkart/gherkart_io.dart';
 import 'package:test/test.dart';
 
 // ---------------------------------------------------------------------------
-// State
-// ---------------------------------------------------------------------------
-
-final _seen = <String>[];
-
-// ---------------------------------------------------------------------------
 // Steps — the resolved value arrives in ctx.arg after scheme resolution
 // ---------------------------------------------------------------------------
 
 final schemeSteps = StepRegistry<void>.fromMap({
-  'I see the text "{text}"'.mapper(): ($, ctx) async {
-    final text = ctx.arg<String>(0);
-    _seen.add(text);
-    // In a real test you'd verify the text is on screen.
-    // Here we just confirm the scheme resolved it.
-    expect(text, isNotEmpty);
+  '"{actual}" is "{expected}"'.mapper(): ($, ctx) async {
+    final actual = ctx.arg<String>(0);
+    final expected = ctx.arg<String>(1);
+    expect(actual, expected);
   },
 });
 
@@ -54,8 +46,6 @@ final resolver = SchemeResolver()
 // ---------------------------------------------------------------------------
 
 Future<void> main() async {
-  setUp(_seen.clear);
-
   await runBddTests<void>(
     rootPaths: ['example/features/scheme.feature'],
     registry: schemeSteps,

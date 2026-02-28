@@ -2,8 +2,8 @@ Feature: Scheme Resolution Demo
   Demonstrates parameter scheme resolution with translation keys.
 
   Scenario: Verify translated text
-    Then I see the text "{t:hello}"
-    And I see the text "{t:goodbye}"
+    Then "{t:hello}" is "Hello, World!"
+    And "{t:goodbye}" is "See you later!"
 
   Scenario: Literal values pass through
-    Then I see the text "plain text"
+    Then "plain text" is "plain text"

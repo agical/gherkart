@@ -354,16 +354,57 @@ final source = AssetSource.fromLoader((path) async {
 Transform parameter values before they reach step functions using scheme prefixes:
 
 ```gherkin
-Then I see the text "{t:hello}"                                # Simple key lookup
-Then I see the text "{t:welcome(name: 'Alice')}"               # Parameterized: "Welcome, Alice!"
-Then I see the text "{t:greeting(name: 'Alice', time: 'morning')}"  # Multiple params
-Then I see the text "plain text"                               # Literal (no scheme)
+Then "{t:hello}" is "Hello, World!"                            # Simple key lookup
+Then "{t:welcome(name: 'Alice')}" is "Welcome, Alice!"         # Parameterized
+Then "{t:greeting(name: 'Alice', time: 'morning')}" is "Good morning, Alice!"
+Then "plain text" is "plain text"                              # Literal (no scheme)
 ```
 
 When parameters are provided with `{t:key(param: value)}` syntax, the key
 and a `Map<String, String>` of parameters are passed to the scheme handler,
 which resolves the final value. String values should be single-quoted;
 unquoted values (like numbers) are kept as-is.
+
+With an in-memory map:
+
+```dart
+final resolver = SchemeResolver()
+  ..register(
+    't',
+    createMapTranslationHandler({
+      'hello': 'Hello, World!',
+      'welcome': 'Welcome, {name}!',
+      'greeting': 'Good {time}, {name}!',
+    }),
+  );
+```
+
+Or from an ARB file:
+
+```json
+{
+  "@@locale": "en",
+  "hello": "Hello, World!",
+  "welcome": "Welcome, {name}!",
+  "@welcome": {
+    "placeholders": {
+      "name": { "type": "String" }
+    }
+  },
+  "greeting": "Good {time}, {name}!",
+  "@greeting": {
+    "placeholders": {
+      "name": { "type": "String" },
+      "time": { "type": "String" }
+    }
+  }
+}
+```
+
+```dart
+final resolver = SchemeResolver()
+  ..register('t', createArbTranslationHandler('lib/l10n/en.arb'));
+```
 
 ### ICU Plural Support
 
@@ -387,6 +428,20 @@ final resolver = SchemeResolver()
   );
 ```
 
+Or equivalently in an ARB file:
+
+```json
+{
+  "@@locale": "en",
+  "shotLabel": "{count, plural, =0{no shots} =1{1 shot} other{{count} shots}}",
+  "@shotLabel": {
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  }
+}
+```
+
 Supported plural features:
 
 | Syntax | Description |
@@ -405,18 +460,9 @@ Plurals can be mixed with regular `{param}` placeholders:
 
 ### Registering Scheme Handlers
 
-```dart
-final resolver = SchemeResolver()
-  ..register(
-    't',
-    createMapTranslationHandler({
-      'hello': 'Hello, World!',
-      'goodbye': 'See you later!',
-      'welcome': 'Welcome, {name}!',          // parameterized
-      'greeting': 'Good {time}, {name}!',     // multiple placeholders
-    }),
-  );
+Pass the resolver to `runBddTests`:
 
+```dart
 await runBddTests<void>(
   // ...
   schemeResolver: resolver,
