@@ -37,12 +37,9 @@ final _resolver = SchemeResolver()
   ..register(
     't',
     createMapTranslationHandler({
-      'shotLabel':
-          '{count, plural, =0{no shots} =1{1 shot} other{{count} shots}}',
-      'itemCount':
-          '{count, plural, =0{no items} =1{# item} other{# items}}',
-      'userShots':
-          '{name} scored {count, plural, =0{nothing} =1{1 shot} other{{count} shots}}',
+      'shotLabel': '{count, plural, =0{no shots} =1{1 shot} other{{count} shots}}',
+      'itemCount': '{count, plural, =0{no items} =1{# item} other{# items}}',
+      'userShots': '{name} scored {count, plural, =0{nothing} =1{1 shot} other{{count} shots}}',
     }),
   );
 

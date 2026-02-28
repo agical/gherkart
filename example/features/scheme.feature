@@ -7,3 +7,6 @@ Feature: Scheme Resolution Demo
 
   Scenario: Literal values pass through
     Then "plain text" is "plain text"
+
+  Scenario: Custom scheme handler
+    Then "{x:hello(p1: 1, p2: 'World')}" is "hello 1 World"

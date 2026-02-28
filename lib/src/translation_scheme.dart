@@ -201,9 +201,7 @@ String _resolveIcuPlurals(String template, Map<String, String> params) {
     // Replace # with the numeric value within the selected form
     selected = selected.replaceAll('#', paramValue);
 
-    result = result.substring(0, blockStart) +
-        selected +
-        result.substring(blockEnd + 1);
+    result = result.substring(0, blockStart) + selected + result.substring(blockEnd + 1);
   }
   return result;
 }

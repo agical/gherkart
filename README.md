@@ -351,7 +351,43 @@ final source = AssetSource.fromLoader((path) async {
 > Plural example (ARB): [example/plural_translation_arb_test.dart](example/plural_translation_arb_test.dart) +
 > [example/features/plural_translation_arb.feature](example/features/plural_translation_arb.feature)
 
-Transform parameter values before they reach step functions using scheme prefixes:
+### Registering Scheme Handlers
+
+At its simplest, a scheme handler is just an async function that receives
+a key and a parameter map:
+
+```dart
+final resolver = SchemeResolver()
+  ..register('x', (String key, Map<String, String> params) async {
+    return [key, ...params.values].join(' ');
+  });
+```
+
+```gherkin
+# Resolves to "hello 1 World"
+Then "{x:hello(p1: 1, p2: 'World')}" is "hello 1 World"
+```
+
+Pass the resolver to `runBddTests`:
+
+```dart
+await runBddTests<void>(
+  // ...
+  schemeResolver: resolver,
+);
+```
+
+### Built-in Translation Handlers
+
+| Handler                          | Source                    |
+|----------------------------------|---------------------------|
+| `createArbTranslationHandler`    | ARB file (via FeatureSource) |
+| `createMapTranslationHandler`    | In-memory `Map<String, String>` |
+| `createTranslationHandler`       | Sync lookup function      |
+| `createKeyMappingHandler`        | Widget key name → value   |
+
+Scheme prefixes in feature file parameters are resolved before they reach
+step functions:
 
 ```gherkin
 Then "{t:hello}" is "Hello, World!"                            # Simple key lookup
@@ -457,26 +493,6 @@ Plurals can be mixed with regular `{param}` placeholders:
 // "{t:userShots(name: 'Alice', count: 2)}" → "Alice scored 2 shots"
 'userShots': '{name} scored {count, plural, =0{nothing} =1{1 shot} other{{count} shots}}',
 ```
-
-### Registering Scheme Handlers
-
-Pass the resolver to `runBddTests`:
-
-```dart
-await runBddTests<void>(
-  // ...
-  schemeResolver: resolver,
-);
-```
-
-### Built-in Translation Handlers
-
-| Handler                          | Source                    |
-|----------------------------------|---------------------------|
-| `createArbTranslationHandler`    | ARB file (via FeatureSource) |
-| `createMapTranslationHandler`    | In-memory `Map<String, String>` |
-| `createTranslationHandler`       | Sync lookup function      |
-| `createKeyMappingHandler`        | Widget key name → value   |
 
 ### Using Scheme Handlers in Widget Tests
 

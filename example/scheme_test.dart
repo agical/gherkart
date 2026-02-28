@@ -7,6 +7,7 @@
 /// Demonstrates:
 /// - `SchemeResolver` with the `{t:key}` prefix for translation lookups
 /// - `createMapTranslationHandler` for in-memory translations
+/// - Custom scheme handler with `{x:key(params)}`
 /// - Literal values passing through without a scheme
 ///
 /// Run with: dart test example/scheme_test.dart
@@ -39,7 +40,10 @@ final resolver = SchemeResolver()
       'hello': 'Hello, World!',
       'goodbye': 'See you later!',
     }),
-  );
+  )
+  ..register('x', (String key, Map<String, String> params) async {
+    return [key, ...params.values].join(' ');
+  });
 
 // ---------------------------------------------------------------------------
 // Test runner

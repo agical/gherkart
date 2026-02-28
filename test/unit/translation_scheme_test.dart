@@ -208,8 +208,7 @@ void main() {
     group('ICU plural support', () {
       test('selects =0 form for zero', () async {
         final handler = createMapTranslationHandler({
-          'shotLabel':
-              '{count, plural, =0{no shots} =1{1 shot} other{{count} shots}}',
+          'shotLabel': '{count, plural, =0{no shots} =1{1 shot} other{{count} shots}}',
         });
 
         final resolver = SchemeResolver()..register('t', handler);
@@ -220,8 +219,7 @@ void main() {
 
       test('selects =1 form for one', () async {
         final handler = createMapTranslationHandler({
-          'shotLabel':
-              '{count, plural, =0{no shots} =1{1 shot} other{{count} shots}}',
+          'shotLabel': '{count, plural, =0{no shots} =1{1 shot} other{{count} shots}}',
         });
 
         final resolver = SchemeResolver()..register('t', handler);
@@ -232,8 +230,7 @@ void main() {
 
       test('selects other form and substitutes param', () async {
         final handler = createMapTranslationHandler({
-          'shotLabel':
-              '{count, plural, =0{no shots} =1{1 shot} other{{count} shots}}',
+          'shotLabel': '{count, plural, =0{no shots} =1{1 shot} other{{count} shots}}',
         });
 
         final resolver = SchemeResolver()..register('t', handler);
@@ -244,8 +241,7 @@ void main() {
 
       test('handles # as placeholder for count param', () async {
         final handler = createMapTranslationHandler({
-          'itemCount':
-              '{count, plural, =0{no items} =1{# item} other{# items}}',
+          'itemCount': '{count, plural, =0{no items} =1{# item} other{# items}}',
         });
 
         final resolver = SchemeResolver()..register('t', handler);
@@ -269,10 +265,7 @@ void main() {
 ''',
         });
 
-        final resolver = SchemeResolver()
-          ..register(
-              't',
-              createArbTranslationHandler('test.arb', source: source));
+        final resolver = SchemeResolver()..register('t', createArbTranslationHandler('test.arb', source: source));
         final result = await resolver.resolve('{t:shotLabel(count: 3)}');
 
         expect(result.resolved, '3 shots');
@@ -280,21 +273,18 @@ void main() {
 
       test('plural with mixed regular placeholders', () async {
         final handler = createMapTranslationHandler({
-          'userShots':
-              '{name} scored {count, plural, =0{no shots} =1{1 shot} other{{count} shots}}',
+          'userShots': '{name} scored {count, plural, =0{no shots} =1{1 shot} other{{count} shots}}',
         });
 
         final resolver = SchemeResolver()..register('t', handler);
-        final result = await resolver.resolve(
-            '{t:userShots(name: \'Alice\', count: 2)}');
+        final result = await resolver.resolve('{t:userShots(name: \'Alice\', count: 2)}');
 
         expect(result.resolved, 'Alice scored 2 shots');
       });
 
       test('falls back to other when exact match not found', () async {
         final handler = createMapTranslationHandler({
-          'shotLabel':
-              '{count, plural, =0{no shots} other{{count} shots}}',
+          'shotLabel': '{count, plural, =0{no shots} other{{count} shots}}',
         });
 
         final resolver = SchemeResolver()..register('t', handler);
