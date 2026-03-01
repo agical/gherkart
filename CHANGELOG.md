@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.2.0
+## 0.2.1
 
 ### Features
 
@@ -12,6 +12,7 @@
   syntax from ARB files and map translations. Supports exact matches (`=N`),
   `other` fallback, `{param}` substitution, and `#` shorthand.
 - `ResolvedParam` now exposes a `params` field with parsed parameters
+- Use tags for automated publishing to pub.dev
 
 ### Breaking Changes
 
