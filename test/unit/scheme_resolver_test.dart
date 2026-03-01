@@ -15,7 +15,7 @@ void main() {
 
     group('pattern matching', () {
       test('identifies scheme parameters', () async {
-        resolver.register('t', (value) async => 'translated: $value');
+        resolver.register('t', (value, params) async => 'translated: $value');
 
         final result = await resolver.resolve('{t:greeting}');
 
@@ -42,7 +42,7 @@ void main() {
       });
 
       test('handles colons in value', () async {
-        resolver.register('t', (value) async => 'got: $value');
+        resolver.register('t', (value, params) async => 'got: $value');
 
         final result = await resolver.resolve('{t:key:with:colons}');
 
@@ -51,7 +51,7 @@ void main() {
       });
 
       test('handles spaces in value', () async {
-        resolver.register('k', (value) async => 'key: $value');
+        resolver.register('k', (value, params) async => 'key: $value');
 
         final result = await resolver.resolve('{k:bank display}');
 
@@ -95,12 +95,46 @@ void main() {
           )),
         );
       });
+
+      test('error message includes original param without parameters', () async {
+        resolver.register('t', (v, params) async => v);
+
+        expect(
+          () => resolver.resolve('{bad:hello}'),
+          throwsA(isA<ArgumentError>().having(
+            (e) => e.message,
+            'message',
+            allOf(
+              contains('Unknown scheme "bad"'),
+              contains('{bad:hello}'),
+              contains('Registered schemes: t'),
+            ),
+          )),
+        );
+      });
+
+      test('error message includes original param with parameters', () async {
+        resolver.register('t', (v, params) async => v);
+
+        expect(
+          () => resolver.resolve('{bad:key(name: \'Alice\')}'),
+          throwsA(isA<ArgumentError>().having(
+            (e) => e.message,
+            'message',
+            allOf(
+              contains('Unknown scheme "bad"'),
+              contains('{bad:key(name: \'Alice\')}'),
+              contains('Registered schemes: t'),
+            ),
+          )),
+        );
+      });
     });
 
     group('resolveAll', () {
       test('resolves list of parameters', () async {
-        resolver.register('t', (v) async => 'T:$v');
-        resolver.register('k', (v) async => 'K:$v');
+        resolver.register('t', (v, params) async => 'T:$v');
+        resolver.register('k', (v, params) async => 'K:$v');
 
         final results = await resolver.resolveAll([
           '{t:hello}',
@@ -124,7 +158,7 @@ void main() {
 
     group('hasScheme', () {
       test('returns true for registered schemes', () {
-        resolver.register('t', (v) async => v);
+        resolver.register('t', (v, params) async => v);
 
         expect(resolver.hasScheme('t'), true);
         expect(resolver.hasScheme('k'), false);
@@ -152,6 +186,121 @@ void main() {
         );
 
         expect(param.toString(), 'literal: literal');
+      });
+    });
+
+    group('parameterized scheme values', () {
+      test('parses single parameter from scheme value', () async {
+        resolver.register('t', (value, params) async => '{shots} shot(s)');
+
+        final result = await resolver.resolve('{t:shotLabel(shots: 1)}');
+
+        expect(result.scheme, 't');
+        expect(result.value, 'shotLabel');
+        expect(result.params, {'shots': '1'});
+        // Resolver does not substitute — that's the handler's job
+        expect(result.resolved, '{shots} shot(s)');
+      });
+
+      test('parses multiple parameters', () async {
+        resolver.register('t', (value, params) async => 'Good {time}, {name}!');
+
+        final result = await resolver.resolve('{t:greeting(name: \'Alice\', time: \'morning\')}');
+
+        expect(result.scheme, 't');
+        expect(result.value, 'greeting');
+        expect(result.params, {'name': 'Alice', 'time': 'morning'});
+        // Resolver does not substitute — that's the handler's job
+        expect(result.resolved, 'Good {time}, {name}!');
+      });
+
+      test('passes key and params to handler', () async {
+        String? receivedKey;
+        Map<String, String>? receivedParams;
+        resolver.register('t', (value, params) async {
+          receivedKey = value;
+          receivedParams = params;
+          return 'resolved';
+        });
+
+        await resolver.resolve('{t:myKey(p: \'v\')}');
+
+        expect(receivedKey, 'myKey');
+        expect(receivedParams, {'p': 'v'});
+      });
+
+      test('no substitution when no params provided', () async {
+        resolver.register('t', (value, params) async => 'Hello, World!');
+
+        final result = await resolver.resolve('{t:hello}');
+
+        expect(result.params, isEmpty);
+        expect(result.resolved, 'Hello, World!');
+      });
+
+      test('params field is empty for plain scheme values', () async {
+        resolver.register('t', (value, params) async => 'resolved');
+
+        final result = await resolver.resolve('{t:simpleKey}');
+
+        expect(result.params, isEmpty);
+      });
+
+      test('params field is empty for literal values', () async {
+        final result = await resolver.resolve('plain text');
+
+        expect(result.params, isEmpty);
+      });
+
+      test('substitutes only matching placeholders', () async {
+        resolver.register('t', (value, params) async => '{name} has {count} {thing}');
+
+        final result = await resolver.resolve('{t:label(name: \'Bob\', count: 3)}');
+
+        // Resolver does not substitute — raw template returned
+        expect(result.resolved, '{name} has {count} {thing}');
+        expect(result.params, {'name': 'Bob', 'count': '3'});
+      });
+
+      test('does not substitute when resolved value is not a String', () async {
+        resolver.register('k', (value, params) async => 42);
+
+        final result = await resolver.resolve('{k:element(p: \'v\')}');
+
+        expect(result.resolved, 42);
+        expect(result.params, {'p': 'v'});
+      });
+
+      test('handles quoted parameter values with spaces', () async {
+        resolver.register('t', (value, params) async => 'Welcome, {guest}!');
+
+        final result = await resolver.resolve('{t:welcome(guest: \'John Doe\')}');
+
+        expect(result.params, {'guest': 'John Doe'});
+        // Resolver does not substitute — raw template returned
+        expect(result.resolved, 'Welcome, {guest}!');
+      });
+
+      test('resolveAll works with parameterized values', () async {
+        resolver.register('t', (value, params) async {
+          final map = {
+            'shotLabel': '{shots} shot(s)',
+            'hello': 'Hello!',
+          };
+          return map[value]!;
+        });
+
+        final results = await resolver.resolveAll([
+          '{t:shotLabel(shots: 5)}',
+          '{t:hello}',
+          'literal',
+        ]);
+
+        // Resolver does not substitute — raw templates returned
+        expect(results[0].resolved, '{shots} shot(s)');
+        expect(results[0].params, {'shots': '5'});
+        expect(results[1].resolved, 'Hello!');
+        expect(results[2].resolved, 'literal');
       });
     });
   });

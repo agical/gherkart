@@ -2,15 +2,14 @@
 // Use of this source code is governed by an MIT-style license that can be
 // found in the LICENSE file.
 
-/// Scheme resolution example.
+/// Parameterized translation example.
 ///
 /// Demonstrates:
-/// - `SchemeResolver` with the `{t:key}` prefix for translation lookups
-/// - `createMapTranslationHandler` for in-memory translations
-/// - Custom scheme handler with `{x:key(params)}`
-/// - Literal values passing through without a scheme
+/// - `{t:key(param: value)}` syntax for parameterized translations
+/// - Placeholders in translation values get substituted with provided params
+/// - Backward-compatible with plain `{t:key}` syntax
 ///
-/// Run with: dart test example/scheme_test.dart
+/// Run with: dart test example/parameterized_translation_test.dart
 library;
 
 import 'package:gherkart/gherkart.dart';
@@ -18,10 +17,10 @@ import 'package:gherkart/gherkart_io.dart';
 import 'package:test/test.dart';
 
 // ---------------------------------------------------------------------------
-// Steps — the resolved value arrives in ctx.arg after scheme resolution
+// Steps
 // ---------------------------------------------------------------------------
 
-final schemeSteps = StepRegistry<void>.fromMap({
+final paramTranslationSteps = StepRegistry<void>.fromMap({
   '"{actual}" is "{expected}"'.mapper(): ($, ctx) async {
     final actual = ctx.arg<String>(0);
     final expected = ctx.arg<String>(1);
@@ -30,20 +29,18 @@ final schemeSteps = StepRegistry<void>.fromMap({
 });
 
 // ---------------------------------------------------------------------------
-// Scheme resolver
+// Scheme resolver with parameterized translations
 // ---------------------------------------------------------------------------
 
 final resolver = SchemeResolver()
   ..register(
     't',
     createMapTranslationHandler({
+      'welcome': 'Welcome, {name}!',
+      'greeting': 'Good {time}, {name}!',
       'hello': 'Hello, World!',
-      'goodbye': 'See you later!',
     }),
-  )
-  ..register('x', (String key, Map<String, String> params) async {
-    return [key, ...params.values].join(' ');
-  });
+  );
 
 // ---------------------------------------------------------------------------
 // Test runner
@@ -51,8 +48,8 @@ final resolver = SchemeResolver()
 
 Future<void> main() async {
   await runBddTests<void>(
-    rootPaths: ['example/features/scheme.feature'],
-    registry: schemeSteps,
+    rootPaths: ['example/features/parameterized_translation.feature'],
+    registry: paramTranslationSteps,
     source: FileSystemSource(),
     schemeResolver: resolver,
     adapter: _createTestAdapter(),
