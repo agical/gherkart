@@ -1,6 +1,6 @@
 # Gherkart
 
-A lightweight, runtime BDD framework for Dart and Flutter widget testing.
+A lightweight, runtime BDD framework for Dart and Flutter testing.
 Parse Gherkin `.feature` files at runtime — no code generation required.
 
 ## Features at a Glance

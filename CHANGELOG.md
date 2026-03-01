@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.2.0
 
 ### Features
 
@@ -12,6 +12,14 @@
   syntax from ARB files and map translations. Supports exact matches (`=N`),
   `other` fallback, `{param}` substitution, and `#` shorthand.
 - `ResolvedParam` now exposes a `params` field with parsed parameters
+
+### Breaking Changes
+
+- `SchemeHandler` typedef changed from `(String value)` to
+  `(String key, Map<String, String> params)`. Custom handlers must update
+  their signature. If you use the built-in factory functions
+  (`createMapTranslationHandler`, `createArbTranslationHandler`, etc.)
+  for automatic placeholder substitution, no change is needed.
 
 ## 0.1.4
 
