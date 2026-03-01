@@ -26,7 +26,7 @@ Parse Gherkin `.feature` files at runtime — no code generation required.
 | Multiple sources | `FileSystemSource` (disk) or `AssetSource` (in-memory / web) |
 | Registry merging | Compose step registries from separate modules |
 | Scheme resolution | `{t:translationKey}` parameter schemes for i18n and key lookup |
-| Translation handlers | ARB file, map, or function-based lookup |
+| Translation handlers | ARB file, map, or function-based lookup with parameterized values |
 | Configurable output | Silent → scenario names → steps → verbose with timing |
 | Reporting system | `SummaryReporter`, `BufferedReporter`, `MarkdownFileReporter`, composable |
 | Test structure | Tree (nested by directory) or flat grouping |
@@ -341,27 +341,36 @@ final source = AssetSource.fromLoader((path) async {
 
 > Example: [example/scheme_test.dart](example/scheme_test.dart) +
 > [example/features/scheme.feature](example/features/scheme.feature)
-
-Transform parameter values before they reach step functions using scheme prefixes:
-
-```gherkin
-Then I see the text "{t:hello}"      # Translation key → resolved string
-Then I see the text "{t:goodbye}"    # Another translation key
-Then I see the text "plain text"     # Literal (no scheme)
-```
+>
+> Parameterized example: [example/parameterized_translation_test.dart](example/parameterized_translation_test.dart) +
+> [example/features/parameterized_translation.feature](example/features/parameterized_translation.feature)
+>
+> Plural example (map): [example/plural_translation_test.dart](example/plural_translation_test.dart) +
+> [example/features/plural_translation.feature](example/features/plural_translation.feature)
+>
+> Plural example (ARB): [example/plural_translation_arb_test.dart](example/plural_translation_arb_test.dart) +
+> [example/features/plural_translation_arb.feature](example/features/plural_translation_arb.feature)
 
 ### Registering Scheme Handlers
 
+At its simplest, a scheme handler is just an async function that receives
+a key and a parameter map:
+
 ```dart
 final resolver = SchemeResolver()
-  ..register(
-    't',
-    createMapTranslationHandler({
-      'hello': 'Hello, World!',
-      'goodbye': 'See you later!',
-    }),
-  );
+  ..register('x', (String key, Map<String, String> params) async {
+    return [key, ...params.values].join(' ');
+  });
+```
 
+```gherkin
+# Resolves to "hello 1 World"
+Then "{x:hello(p1: 1, p2: 'World')}" is "hello 1 World"
+```
+
+Pass the resolver to `runBddTests`:
+
+```dart
 await runBddTests<void>(
   // ...
   schemeResolver: resolver,
@@ -376,6 +385,114 @@ await runBddTests<void>(
 | `createMapTranslationHandler`    | In-memory `Map<String, String>` |
 | `createTranslationHandler`       | Sync lookup function      |
 | `createKeyMappingHandler`        | Widget key name → value   |
+
+Scheme prefixes in feature file parameters are resolved before they reach
+step functions:
+
+```gherkin
+Then "{t:hello}" is "Hello, World!"                            # Simple key lookup
+Then "{t:welcome(name: 'Alice')}" is "Welcome, Alice!"         # Parameterized
+Then "{t:greeting(name: 'Alice', time: 'morning')}" is "Good morning, Alice!"
+Then "plain text" is "plain text"                              # Literal (no scheme)
+```
+
+When parameters are provided with `{t:key(param: value)}` syntax, the key
+and a `Map<String, String>` of parameters are passed to the scheme handler,
+which resolves the final value. String values should be single-quoted;
+unquoted values (like numbers) are kept as-is.
+
+With an in-memory map:
+
+```dart
+final resolver = SchemeResolver()
+  ..register(
+    't',
+    createMapTranslationHandler({
+      'hello': 'Hello, World!',
+      'welcome': 'Welcome, {name}!',
+      'greeting': 'Good {time}, {name}!',
+    }),
+  );
+```
+
+Or from an ARB file:
+
+```json
+{
+  "@@locale": "en",
+  "hello": "Hello, World!",
+  "welcome": "Welcome, {name}!",
+  "@welcome": {
+    "placeholders": {
+      "name": { "type": "String" }
+    }
+  },
+  "greeting": "Good {time}, {name}!",
+  "@greeting": {
+    "placeholders": {
+      "name": { "type": "String" },
+      "time": { "type": "String" }
+    }
+  }
+}
+```
+
+```dart
+final resolver = SchemeResolver()
+  ..register('t', createArbTranslationHandler('lib/l10n/en.arb'));
+```
+
+### ICU Plural Support
+
+The built-in translation handlers (`createMapTranslationHandler` and
+`createArbTranslationHandler`) support ICU MessageFormat plural syntax:
+
+```gherkin
+# Feature file
+Then "{t:shotLabel(count: 0)}" is "no shots"
+Then "{t:shotLabel(count: 1)}" is "1 shot"
+Then "{t:shotLabel(count: 5)}" is "5 shots"
+```
+
+```dart
+final resolver = SchemeResolver()
+  ..register(
+    't',
+    createMapTranslationHandler({
+      'shotLabel': '{count, plural, =0{no shots} =1{1 shot} other{{count} shots}}',
+    }),
+  );
+```
+
+Or equivalently in an ARB file:
+
+```json
+{
+  "@@locale": "en",
+  "shotLabel": "{count, plural, =0{no shots} =1{1 shot} other{{count} shots}}",
+  "@shotLabel": {
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  }
+}
+```
+
+Supported plural features:
+
+| Syntax | Description |
+|--------|---------------------------------------------|
+| `=0`, `=1`, `=N` | Exact numeric match |
+| `other` | Fallback when no exact match is found |
+| `{param}` | Substituted with the parameter value inside a plural branch |
+| `#` | Shorthand for the plural parameter's value |
+
+Plurals can be mixed with regular `{param}` placeholders:
+
+```dart
+// "{t:userShots(name: 'Alice', count: 2)}" → "Alice scored 2 shots"
+'userShots': '{name} scored {count, plural, =0{nothing} =1{1 shot} other{{count} shots}}',
+```
 
 ### Using Scheme Handlers in Widget Tests
 
