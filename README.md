@@ -1,4 +1,9 @@
+<p align="center">
+  <img src="assets/gherkart_driver_and_logo.png" alt="Gherkart driver" width="400">
+</p>
+
 # Gherkart
+
 
 A lightweight, runtime BDD framework for Dart and Flutter testing.
 Parse Gherkin `.feature` files at runtime — no code generation required.
