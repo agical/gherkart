@@ -1,5 +1,31 @@
 # Changelog
 
+## Unreleased
+
+### Features
+
+- **Adopt official Cucumber Dart packages** — feature parsing is now powered by official
+  `cucumber_gherkin` and `cucumber_messages` packages.
+- **Extended Gherkin keyword support**:
+  - `Rule:` sections for grouping scenarios with rule-level backgrounds and tag inheritance
+  - `Example:` supported as a synonym for `Scenario:`
+  - `Scenario Template:` and `Scenarios:` supported as synonyms for `Scenario Outline:` and `Examples:`
+  - `*` (bullet / asterisk) steps supported in backgrounds, scenarios, outlines, and rules
+- **Multi-language support (i18n)** — parse feature files in 70+ languages supported by Cucumber
+  using the standard `# language: <locale>` comment header.
+- **Enhanced Data Table & Doc String support** — supports escaped pipes (`\|`) and empty cells
+  in tables, and both `"""` and ```` ``` ```` delimiters for doc strings.
+- **Precise parse diagnostics** — `GherkinParseException` provides line and column coordinates for
+  malformed feature files.
+- **Pre-sanitizer with migration diagnostics** — automatically translates legacy syntax
+  (`import` lines, `'''` docstrings, and `{param}` in Scenario Outlines) while printing actionable
+  warnings with exact `grep` and `sed` terminal commands to update files.
+- **Coverage summary** — `just test-coverage` now reports per-file and overall coverage numbers.
+
+### Changes
+
+- Dart SDK minimum floor raised from `>=3.2.0` to `>=3.8.0` to match `cucumber_gherkin`.
+
 ## 0.2.1
 
 ### Features

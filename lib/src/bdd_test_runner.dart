@@ -26,12 +26,7 @@ class BddHooks<T> {
   /// Called after each scenario.
   final FutureOr<void> Function(String scenarioName, bool success, List<String> tags)? afterEach;
 
-  const BddHooks({
-    this.beforeAll,
-    this.afterAll,
-    this.beforeEach,
-    this.afterEach,
-  });
+  const BddHooks({this.beforeAll, this.afterAll, this.beforeEach, this.afterEach});
 }
 
 /// Signature for the test function that creates a test case.
@@ -46,12 +41,8 @@ class BddHooks<T> {
 /// - [tags]: Optional tags for filtering
 /// - [skip]: Whether to skip this test
 /// - [callback]: The test body to execute
-typedef TestFunction<T> = void Function(
-  String name, {
-  List<String>? tags,
-  bool skip,
-  Future<void> Function(T context) callback,
-});
+typedef TestFunction<T> =
+    void Function(String name, {List<String>? tags, bool skip, Future<void> Function(T context) callback});
 
 /// Signature for the group function that creates a test group.
 typedef GroupFunction = void Function(String name, void Function() body);
@@ -239,11 +230,7 @@ class BddTestRunner<T> {
     });
     _features = await Future.wait(futures);
 
-    final factory = FeatureTestFactory<T>(
-      rootPath: rootPaths.first,
-      registry: registry,
-      structure: structure,
-    );
+    final factory = FeatureTestFactory<T>(rootPath: rootPaths.first, registry: registry, structure: structure);
 
     _plan = factory.buildTestPlan(_features!);
   }
@@ -293,10 +280,7 @@ class BddTestRunner<T> {
       // Run child groups (these are feature groups within a folder)
       // Find matching features for children by name
       for (final child in testGroup.children) {
-        final childFeature = _features?.firstWhere(
-          (f) => f.name == child.name,
-          orElse: () => feature!,
-        );
+        final childFeature = _features?.firstWhere((f) => f.name == child.name, orElse: () => feature!);
         _runGroup(child, feature: childFeature);
       }
 
@@ -310,11 +294,7 @@ class BddTestRunner<T> {
     });
   }
 
-  void _runTestCase(
-    TestCase testCase,
-    List<Step> backgroundSteps,
-    ReportFeature? reportFeature,
-  ) {
+  void _runTestCase(TestCase testCase, List<Step> backgroundSteps, ReportFeature? reportFeature) {
     // Check for @wip tag to skip work-in-progress tests (unless RUN_WIP=true)
     final shouldSkip = testCase.tags.contains('wip') && !_runWip;
 
@@ -327,11 +307,7 @@ class BddTestRunner<T> {
 
         // Report scenario start
         if (reporter != null) {
-          _currentScenario = ReportScenario(
-            name: testCase.name,
-            tags: testCase.tags,
-            featurePath: reportFeature?.path,
-          );
+          _currentScenario = ReportScenario(name: testCase.name, tags: testCase.tags, featurePath: reportFeature?.path);
           reporter!.onScenarioStart(_currentScenario!);
         }
 
@@ -344,10 +320,12 @@ class BddTestRunner<T> {
           }
         }
         if (missingSteps.isNotEmpty) {
-          final errorLines = missingSteps.map((s) {
-            final loc = s.location != null ? '${s.location}: ' : '';
-            return '  - $loc${s.fullText}';
-          }).join('\n');
+          final errorLines = missingSteps
+              .map((s) {
+                final loc = s.location != null ? '${s.location}: ' : '';
+                return '  - $loc${s.fullText}';
+              })
+              .join('\n');
           adapter.fail('${missingSteps.length} missing step(s):\n$errorLines');
         }
 
@@ -384,7 +362,9 @@ class BddTestRunner<T> {
   }
 
   Future<void> _runStep(T context, Step step) async {
-    final keyword = step.keyword.name[0].toUpperCase() + step.keyword.name.substring(1);
+    final keyword =
+        step.originalKeyword?.trim() ??
+        (step.keyword == StepKeyword.star ? '*' : step.keyword.name[0].toUpperCase() + step.keyword.name.substring(1));
     final stopwatch = Stopwatch()..start();
     final locationInfo = step.location != null ? ' at ${step.location}' : '';
 
@@ -418,12 +398,7 @@ class BddTestRunner<T> {
           resolvedArgs: resolvedParams,
         );
       } else {
-        await match.execute(
-          context,
-          table: step.dataTable,
-          docString: step.docString,
-          location: step.location,
-        );
+        await match.execute(context, table: step.dataTable, docString: step.docString, location: step.location);
       }
 
       stopwatch.stop();

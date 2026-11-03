@@ -31,24 +31,18 @@ extension StringLineMapper on String {
     final paramNames = <String>[];
 
     // Escape special regex characters, but not our {param} placeholders
-    var regexPattern = pattern.replaceAllMapped(
-      RegExp(r'[.*+?^${}()|[\]\\]'),
-      (match) {
-        final char = match.group(0)!;
-        // Don't escape { and } - we'll handle them specially
-        if (char == '{' || char == '}') return char;
-        return '\\$char';
-      },
-    );
+    var regexPattern = pattern.replaceAllMapped(RegExp(r'[.*+?^${}()|[\]\\]'), (match) {
+      final char = match.group(0)!;
+      // Don't escape { and } - we'll handle them specially
+      if (char == '{' || char == '}') return char;
+      return '\\$char';
+    });
 
     // Replace {paramName} with capturing groups
-    regexPattern = regexPattern.replaceAllMapped(
-      RegExp(r'\{(\w+)\}'),
-      (match) {
-        paramNames.add(match.group(1)!);
-        return '(.+?)'; // Non-greedy capture
-      },
-    );
+    regexPattern = regexPattern.replaceAllMapped(RegExp(r'\{(\w+)\}'), (match) {
+      paramNames.add(match.group(1)!);
+      return '(.+?)'; // Non-greedy capture
+    });
 
     // Anchor the pattern
     final regex = RegExp('^$regexPattern\$');

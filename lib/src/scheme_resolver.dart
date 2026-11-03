@@ -31,10 +31,7 @@ library;
 /// Each handler decides how to use the parameters — for example, an ARB
 /// handler substitutes `{placeholder}` tokens, while a Phrase handler
 /// might use `%{placeholder}` syntax.
-typedef SchemeHandler = Future<dynamic> Function(
-  String key,
-  Map<String, String> params,
-);
+typedef SchemeHandler = Future<dynamic> Function(String key, Map<String, String> params);
 
 /// Resolved parameter with its scheme info.
 class ResolvedParam {
@@ -113,12 +110,7 @@ class SchemeResolver {
 
     if (match == null) {
       // No scheme - return as literal
-      return ResolvedParam(
-        original: param,
-        scheme: null,
-        value: param,
-        resolved: param,
-      );
+      return ResolvedParam(original: param, scheme: null, value: param, resolved: param);
     }
 
     final scheme = match.group(1)!;
@@ -147,13 +139,7 @@ class SchemeResolver {
 
     var resolved = await handler(key, params);
 
-    return ResolvedParam(
-      original: param,
-      scheme: scheme,
-      value: key,
-      resolved: resolved,
-      params: params,
-    );
+    return ResolvedParam(original: param, scheme: scheme, value: key, resolved: resolved, params: params);
   }
 
   /// Resolve all parameters in a list.
@@ -163,12 +149,7 @@ class SchemeResolver {
       if (param is String) {
         results.add(await resolve(param));
       } else {
-        results.add(ResolvedParam(
-          original: param.toString(),
-          scheme: null,
-          value: param.toString(),
-          resolved: param,
-        ));
+        results.add(ResolvedParam(original: param.toString(), scheme: null, value: param.toString(), resolved: param));
       }
     }
     return results;
@@ -206,9 +187,7 @@ class SchemeResolver {
 /// ```dart
 /// resolver.register('t', createTranslationHandler(context));
 /// ```
-SchemeHandler createTranslationHandler(
-  String Function(String key) translator,
-) {
+SchemeHandler createTranslationHandler(String Function(String key) translator) {
   return (String key, Map<String, String> params) async => translator(key);
 }
 
@@ -218,8 +197,6 @@ SchemeHandler createTranslationHandler(
 /// ```dart
 /// resolver.register('k', createKeyMappingHandler(keyMapper));
 /// ```
-SchemeHandler createKeyMappingHandler(
-  dynamic Function(String name) mapper,
-) {
+SchemeHandler createKeyMappingHandler(dynamic Function(String name) mapper) {
   return (String name, Map<String, String> params) async => mapper(name);
 }

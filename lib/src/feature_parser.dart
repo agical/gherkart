@@ -1,3 +1,6 @@
+import 'package:cucumber_gherkin/cucumber_gherkin.dart';
+import 'package:cucumber_messages/cucumber_messages.dart' as cm;
+
 import 'feature_source.dart';
 
 /// Represents a parsed Gherkin feature file.
@@ -22,9 +25,9 @@ class Feature {
 
   /// Returns all scenarios including expanded scenario outlines.
   List<Scenario> get allScenarios => [
-        ...scenarios,
-        for (final outline in scenarioOutlines) ...outline.expandToScenarios(),
-      ];
+    ...scenarios,
+    for (final outline in scenarioOutlines) ...outline.expandToScenarios(),
+  ];
 
   @override
   String toString() => 'Feature($name, ${scenarios.length} scenarios, ${scenarioOutlines.length} outlines)';
@@ -43,11 +46,7 @@ class Scenario {
   final List<String> tags;
   final List<Step> steps;
 
-  Scenario({
-    required this.name,
-    this.tags = const [],
-    required this.steps,
-  });
+  Scenario({required this.name, this.tags = const [], required this.steps});
 
   @override
   String toString() => 'Scenario($name, ${steps.length} steps)';
@@ -65,12 +64,7 @@ class ScenarioOutline {
   final List<Step> steps;
   final List<ExampleTable> examples;
 
-  ScenarioOutline({
-    required this.name,
-    this.tags = const [],
-    required this.steps,
-    required this.examples,
-  });
+  ScenarioOutline({required this.name, this.tags = const [], required this.steps, required this.examples});
 
   /// Expands this outline into concrete scenarios by substituting placeholders.
   List<Scenario> expandToScenarios() {
@@ -81,8 +75,9 @@ class ScenarioOutline {
         final values = Map.fromIterables(exampleTable.headers, row);
 
         // Generate scenario name
-        final exampleName =
-            exampleTable.name != null ? '${exampleTable.name} #${rowIndex + 1}' : 'Example ${rowIndex + 1}';
+        final exampleName = exampleTable.name != null
+            ? '${exampleTable.name} #${rowIndex + 1}'
+            : 'Example ${rowIndex + 1}';
         final scenarioName = '$name ($exampleName)';
 
         // Substitute placeholders in steps
@@ -98,14 +93,11 @@ class ScenarioOutline {
             location: step.location,
             dataTable: step.dataTable,
             docString: step.docString,
+            originalKeyword: step.originalKeyword,
           );
         }).toList();
 
-        result.add(Scenario(
-          name: scenarioName,
-          tags: [...tags, ...exampleTable.tags],
-          steps: expandedSteps,
-        ));
+        result.add(Scenario(name: scenarioName, tags: [...tags, ...exampleTable.tags], steps: expandedSteps));
       }
     }
     return result;
@@ -123,13 +115,7 @@ class ExampleTable {
   final List<List<String>> rows;
   final SourceLocation? location;
 
-  ExampleTable({
-    this.name,
-    this.tags = const [],
-    required this.headers,
-    required this.rows,
-    this.location,
-  });
+  ExampleTable({this.name, this.tags = const [], required this.headers, required this.rows, this.location});
 
   /// Converts rows to list of maps for easy access.
   List<Map<String, String>> toMaps() => rows.map((row) => Map.fromIterables(headers, row)).toList();
@@ -142,12 +128,13 @@ class ExampleTable {
 class SourceLocation {
   final String filePath;
   final int line;
+  final int? column;
 
-  const SourceLocation({required this.filePath, required this.line});
+  const SourceLocation({required this.filePath, required this.line, this.column});
 
   /// Returns a clickable file:line reference for IDEs.
   @override
-  String toString() => '$filePath:$line';
+  String toString() => column != null ? '$filePath:$line:$column' : '$filePath:$line';
 }
 
 /// Represents a data table attached to a step.
@@ -164,11 +151,7 @@ class DataTable {
   final List<List<String>> rows;
   final SourceLocation? location;
 
-  DataTable({
-    required this.headers,
-    required this.rows,
-    this.location,
-  });
+  DataTable({required this.headers, required this.rows, this.location});
 
   /// Converts rows to list of maps using headers as keys.
   List<Map<String, String>> toMaps() => rows.map((row) => Map.fromIterables(headers, row)).toList();
@@ -197,23 +180,20 @@ class DocString {
   final String? mediaType;
   final SourceLocation? location;
 
-  DocString({
-    required this.content,
-    this.mediaType,
-    this.location,
-  });
+  DocString({required this.content, this.mediaType, this.location});
 
   @override
   String toString() => 'DocString(${mediaType ?? 'text'}, ${content.length} chars)';
 }
 
-/// Represents a single step (Given/When/Then/And/But).
+/// Represents a single step (Given/When/Then/And/But/*).
 class Step {
   final StepKeyword keyword;
   final String text;
   final SourceLocation? location;
   final DataTable? dataTable;
   final DocString? docString;
+  final String? originalKeyword;
 
   Step({
     required this.keyword,
@@ -221,10 +201,18 @@ class Step {
     this.location,
     this.dataTable,
     this.docString,
+    this.originalKeyword,
   });
 
   /// Returns the full step text including keyword.
-  String get fullText => '${keyword.name[0].toUpperCase()}${keyword.name.substring(1)} $text';
+  String get fullText {
+    if (originalKeyword != null && originalKeyword!.isNotEmpty) {
+      final sep = originalKeyword!.endsWith(' ') ? '' : ' ';
+      return '$originalKeyword$sep$text';
+    }
+    if (keyword == StepKeyword.star) return '* $text';
+    return '${keyword.name[0].toUpperCase()}${keyword.name.substring(1)} $text';
+  }
 
   /// Creates a copy with updated fields.
   Step copyWith({
@@ -233,375 +221,392 @@ class Step {
     SourceLocation? location,
     DataTable? dataTable,
     DocString? docString,
-  }) =>
-      Step(
-        keyword: keyword ?? this.keyword,
-        text: text ?? this.text,
-        location: location ?? this.location,
-        dataTable: dataTable ?? this.dataTable,
-        docString: docString ?? this.docString,
-      );
+    String? originalKeyword,
+  }) => Step(
+    keyword: keyword ?? this.keyword,
+    text: text ?? this.text,
+    location: location ?? this.location,
+    dataTable: dataTable ?? this.dataTable,
+    docString: docString ?? this.docString,
+    originalKeyword: originalKeyword ?? this.originalKeyword,
+  );
 
   @override
   String toString() => fullText;
 }
 
 /// Keywords that can start a step.
-enum StepKeyword { given, when, then, and, but }
+enum StepKeyword { given, when, then, and, but, star }
 
-/// Parses a Gherkin feature file content into a [Feature] object.
-Feature parseFeature(String content, String filePath) {
+/// Thrown when parsing a Gherkin document fails.
+class GherkinParseException implements Exception {
+  final String message;
+  final String filePath;
+  final int? line;
+  final int? column;
+
+  GherkinParseException(this.message, {required this.filePath, this.line, this.column});
+
+  @override
+  String toString() {
+    final loc = line != null ? (column != null ? '$filePath:$line:$column' : '$filePath:$line') : filePath;
+    return 'GherkinParseException: $message at $loc';
+  }
+}
+
+/// Sanitizes legacy or non-standard Gherkin syntax before passing to the official parser.
+///
+/// Converts:
+/// - Unused `import` statements at the top of feature files into comments.
+/// - Triple single-quote docstrings (`'''`) to triple double-quotes (`"""`).
+/// - `{placeholder}` in Scenario Outline steps to `<placeholder>` when matching Examples headers.
+///
+/// For each deprecated syntax pattern found, emits an actionable warning via [onWarning].
+String sanitizeGherkin(String content, String filePath, {void Function(String message)? onWarning}) {
+  final warn = onWarning ?? print;
   final lines = content.split('\n');
 
-  String? featureName;
-  final featureTags = <String>[];
-  final descriptionLines = <String>[];
+  // 1. Process legacy imports and triple-single-quote docstrings line by line
+  for (var i = 0; i < lines.length; i++) {
+    final rawLine = lines[i];
+    final trimmed = rawLine.trim();
+    final lineNum = i + 1;
+
+    // Check for legacy import
+    if (trimmed.startsWith('import ')) {
+      warn(
+        '[gherkart] Deprecation: Found unused Dart import in .feature file at $filePath:$lineNum.\n'
+        'gherkart parses at runtime and does not need imports in feature files.\n'
+        'Remove with:\n'
+        "  sed -i '' '/^import /d' $filePath",
+      );
+      lines[i] = '# $rawLine';
+      continue;
+    }
+
+    // Check for legacy triple single-quote docstring delimiter
+    if (trimmed.startsWith("'''")) {
+      warn(
+        '[gherkart] Deprecation: Found triple single-quote docstring (\'\'\') at $filePath:$lineNum.\n'
+        'Standard Gherkin requires triple double-quotes (""") or backticks (```).\n'
+        'Fix with:\n'
+        '  sed -i \'\' "s/\'\'\'/\\"\\"\\"/g" $filePath',
+      );
+      lines[i] = rawLine.replaceFirst("'''", '"""');
+    }
+  }
+
+  // 2. Process Scenario Outline {header} placeholders
+  var inOutline = false;
+  var outlineStepIndices = <int>[];
+  var outlineHeaders = <String>{};
+  var inExamplesTable = false;
+
+  void flushOutline() {
+    if (outlineHeaders.isNotEmpty && outlineStepIndices.isNotEmpty) {
+      final headerPattern = outlineHeaders.map(RegExp.escape).join('|');
+      final placeholderRegex = RegExp('\\{($headerPattern)\\}');
+      final foundPlaceholders = <String>{};
+      final affectedLines = <int>[];
+
+      for (final stepIdx in outlineStepIndices) {
+        final line = lines[stepIdx];
+        final matches = placeholderRegex.allMatches(line);
+        if (matches.isNotEmpty) {
+          affectedLines.add(stepIdx + 1);
+          for (final m in matches) {
+            foundPlaceholders.add(m.group(1)!);
+          }
+          lines[stepIdx] = line.replaceAllMapped(placeholderRegex, (m) => '<${m.group(1)}>');
+        }
+      }
+
+      if (foundPlaceholders.isNotEmpty) {
+        final joinedHeaders = foundPlaceholders.join('|');
+        final firstLine = affectedLines.first;
+        warn(
+          '[gherkart] Deprecation: Scenario Outline in $filePath:$firstLine uses \'{param}\' instead of \'<param>\'.\n'
+          'Standard Gherkin requires \'<param>\' for outline substitutions.\n\n'
+          '1. Find potential candidate lines:\n'
+          '   grep -nE \'\\{($joinedHeaders)\\}\' $filePath\n\n'
+          '2. Replace curly braces for the example headers in this file:\n'
+          '   sed -i \'\' -E \'s/\\{($joinedHeaders)\\}/<\\1>/g\' $filePath',
+        );
+      }
+    }
+    outlineStepIndices = [];
+    outlineHeaders = {};
+    inExamplesTable = false;
+  }
+
+  for (var i = 0; i < lines.length; i++) {
+    final line = lines[i].trim();
+
+    if (line.startsWith('Scenario Outline:') || line.startsWith('Scenario Template:')) {
+      if (inOutline) {
+        flushOutline();
+      }
+      inOutline = true;
+      inExamplesTable = false;
+      outlineStepIndices = [];
+      outlineHeaders = {};
+      continue;
+    }
+
+    if (inOutline) {
+      if (line.startsWith('Scenario:') ||
+          line.startsWith('Rule:') ||
+          line.startsWith('Feature:') ||
+          line.startsWith('Background:')) {
+        flushOutline();
+        inOutline = false;
+        continue;
+      }
+
+      if (line.startsWith('Examples:') || line.startsWith('Scenarios:')) {
+        inExamplesTable = true;
+        continue;
+      }
+
+      if (inExamplesTable) {
+        if (line.startsWith('@') || line.startsWith('#') || line.isEmpty) {
+          continue;
+        }
+        if (line.startsWith('|')) {
+          final cells = line.split('|').map((c) => c.trim()).where((c) => c.isNotEmpty).toList();
+          outlineHeaders.addAll(cells);
+          inExamplesTable = false;
+          continue;
+        }
+      }
+
+      if (!inExamplesTable) {
+        final isStep =
+            line.startsWith('Given ') ||
+            line.startsWith('When ') ||
+            line.startsWith('Then ') ||
+            line.startsWith('And ') ||
+            line.startsWith('But ') ||
+            line.startsWith('* ');
+        if (isStep) {
+          outlineStepIndices.add(i);
+        }
+      }
+    }
+  }
+
+  if (inOutline) {
+    flushOutline();
+  }
+
+  return lines.join('\n');
+}
+
+/// Parses a Gherkin feature file content into a [Feature] object.
+Feature parseFeature(String content, String filePath, {void Function(String message)? onWarning}) {
+  final sanitized = sanitizeGherkin(content, filePath, onWarning: onWarning);
+  final messages = generateMessages(
+    sanitized,
+    filePath,
+    const GherkinOptions(includeSource: true, includeGherkinDocument: true, includePickles: true),
+  );
+
+  final parseErrors = <cm.ParseError>[];
+  cm.GherkinDocument? document;
+
+  for (final envelope in messages) {
+    if (envelope.parseError != null) {
+      parseErrors.add(envelope.parseError!);
+    }
+    if (envelope.gherkinDocument != null) {
+      document = envelope.gherkinDocument;
+    }
+  }
+
+  if (parseErrors.isNotEmpty) {
+    final first = parseErrors.first;
+    throw GherkinParseException(
+      parseErrors.map((e) => e.message).join('\n'),
+      filePath: filePath,
+      line: first.source.location?.line,
+      column: first.source.location?.column,
+    );
+  }
+
+  final f = document?.feature;
+  if (f == null) {
+    return Feature(name: 'Unnamed Feature', filePath: filePath, scenarios: []);
+  }
+
   Background? background;
   final scenarios = <Scenario>[];
   final scenarioOutlines = <ScenarioOutline>[];
 
-  var currentSection = _Section.none;
-  var currentScenarioName = '';
-  var currentScenarioTags = <String>[];
-  var currentSteps = <Step>[];
-  var pendingTags = <String>[];
-  var inDescription = false;
-
-  // For Scenario Outline support
-  var isOutline = false;
-  var currentExamples = <ExampleTable>[];
-  var currentExampleName = '';
-  var currentExampleTags = <String>[];
-  var currentExampleHeaders = <String>[];
-  var currentExampleRows = <List<String>>[];
-  SourceLocation? exampleLocation;
-
-  // For data table support
-  var collectingTable = false;
-  var tableHeaders = <String>[];
-  var tableRows = <List<String>>[];
-  SourceLocation? tableLocation;
-
-  // For doc string support
-  var collectingDocString = false;
-  var docStringDelimiter = '';
-  var docStringMediaType = '';
-  var docStringLines = <String>[];
-  SourceLocation? docStringLocation;
-
-  void attachTableToLastStep() {
-    if (tableHeaders.isNotEmpty && currentSteps.isNotEmpty) {
-      final lastStep = currentSteps.removeLast();
-      currentSteps.add(lastStep.copyWith(
-        dataTable: DataTable(
-          headers: tableHeaders,
-          rows: tableRows,
-          location: tableLocation,
-        ),
-      ));
+  for (final child in f.children) {
+    if (child.background != null) {
+      background = _convertBackground(child.background!, filePath);
     }
-    collectingTable = false;
-    tableHeaders = [];
-    tableRows = [];
-    tableLocation = null;
-  }
-
-  void attachDocStringToLastStep() {
-    if (docStringLines.isNotEmpty && currentSteps.isNotEmpty) {
-      final lastStep = currentSteps.removeLast();
-      currentSteps.add(lastStep.copyWith(
-        docString: DocString(
-          content: docStringLines.join('\n'),
-          mediaType: docStringMediaType.isNotEmpty ? docStringMediaType : null,
-          location: docStringLocation,
-        ),
-      ));
+    if (child.scenario != null) {
+      _addScenarioOrOutline(child.scenario!, filePath, scenarios, scenarioOutlines);
     }
-    collectingDocString = false;
-    docStringDelimiter = '';
-    docStringMediaType = '';
-    docStringLines = [];
-    docStringLocation = null;
-  }
-
-  void saveCurrentExampleTable() {
-    if (currentExampleHeaders.isNotEmpty) {
-      currentExamples.add(ExampleTable(
-        name: currentExampleName.isNotEmpty ? currentExampleName : null,
-        tags: currentExampleTags,
-        headers: currentExampleHeaders,
-        rows: currentExampleRows,
-        location: exampleLocation,
-      ));
-    }
-    currentExampleName = '';
-    currentExampleTags = [];
-    currentExampleHeaders = [];
-    currentExampleRows = [];
-    exampleLocation = null;
-  }
-
-  void saveCurrentScenarioOrOutline() {
-    if (collectingTable) attachTableToLastStep();
-    if (collectingDocString) attachDocStringToLastStep();
-
-    if (isOutline) {
-      saveCurrentExampleTable();
-      if (currentScenarioName.isNotEmpty) {
-        scenarioOutlines.add(ScenarioOutline(
-          name: currentScenarioName,
-          tags: currentScenarioTags,
-          steps: currentSteps,
-          examples: currentExamples,
-        ));
+    if (child.rule != null) {
+      final rule = child.rule!;
+      final ruleTags = rule.tags.map((t) => _cleanTag(t.name)).toList();
+      Background? ruleBackground;
+      for (final ruleChild in rule.children) {
+        if (ruleChild.background != null) {
+          ruleBackground = _convertBackground(ruleChild.background!, filePath);
+        }
+        if (ruleChild.scenario != null) {
+          _addScenarioOrOutline(
+            ruleChild.scenario!,
+            filePath,
+            scenarios,
+            scenarioOutlines,
+            ruleTags: ruleTags,
+            extraBackground: ruleBackground,
+          );
+        }
       }
-      currentExamples = [];
-    } else if (currentScenarioName.isNotEmpty) {
-      scenarios.add(Scenario(
-        name: currentScenarioName,
-        tags: currentScenarioTags,
-        steps: currentSteps,
-      ));
     }
-  }
-
-  for (var lineNumber = 0; lineNumber < lines.length; lineNumber++) {
-    final rawLine = lines[lineNumber];
-    final line = rawLine.trim();
-    // Line numbers are 1-based for user display
-    final currentLineNumber = lineNumber + 1;
-
-    // Handle doc string collection
-    if (collectingDocString) {
-      if (line == docStringDelimiter || line.startsWith(docStringDelimiter)) {
-        attachDocStringToLastStep();
-        continue;
-      }
-      // Preserve original indentation relative to the opening delimiter
-      docStringLines.add(rawLine);
-      continue;
-    }
-
-    // Check for doc string start
-    if ((line.startsWith('"""') || line.startsWith("'''")) && currentSteps.isNotEmpty) {
-      collectingDocString = true;
-      docStringDelimiter = line.substring(0, 3);
-      // Media type is optional text after the delimiter
-      docStringMediaType = line.substring(3).trim();
-      docStringLocation = SourceLocation(filePath: filePath, line: currentLineNumber);
-      if (collectingTable) attachTableToLastStep();
-      continue;
-    }
-
-    // Handle data table collection (for steps)
-    if (line.startsWith('|') && currentSteps.isNotEmpty && currentSection != _Section.examples) {
-      final cells = _parseTableRow(line);
-      if (!collectingTable) {
-        collectingTable = true;
-        tableHeaders = cells;
-        tableRows = [];
-        tableLocation = SourceLocation(filePath: filePath, line: currentLineNumber);
-      } else {
-        tableRows.add(cells);
-      }
-      continue;
-    } else if (collectingTable && !line.startsWith('|')) {
-      attachTableToLastStep();
-    }
-
-    // Handle Examples table collection
-    if (line.startsWith('|') && currentSection == _Section.examples) {
-      final cells = _parseTableRow(line);
-      if (currentExampleHeaders.isEmpty) {
-        currentExampleHeaders = cells;
-      } else {
-        currentExampleRows.add(cells);
-      }
-      continue;
-    }
-
-    // Skip empty lines and comments
-    if (line.isEmpty) {
-      if (inDescription) inDescription = false;
-      continue;
-    }
-    if (line.startsWith('#')) continue;
-
-    // Skip import statements
-    if (line.startsWith('import ')) continue;
-
-    // Parse tags
-    if (line.startsWith('@')) {
-      final tags = line.split(RegExp(r'\s+')).where((t) => t.startsWith('@')).map((t) => t.substring(1)).toList();
-      pendingTags.addAll(tags);
-      continue;
-    }
-
-    // Parse Feature line
-    if (line.startsWith('Feature:')) {
-      featureName = line.substring('Feature:'.length).trim();
-      featureTags.addAll(pendingTags);
-      pendingTags = [];
-      currentSection = _Section.feature;
-      inDescription = true;
-      continue;
-    }
-
-    // Parse Background
-    if (line.startsWith('Background:')) {
-      currentSection = _Section.background;
-      currentSteps = [];
-      inDescription = false;
-      continue;
-    }
-
-    // Parse Scenario Outline
-    if (line.startsWith('Scenario Outline:') || line.startsWith('Scenario Template:')) {
-      // Save previous scenario/outline if exists
-      if ((currentSection == _Section.scenario ||
-              currentSection == _Section.scenarioOutline ||
-              currentSection == _Section.examples) &&
-          currentScenarioName.isNotEmpty) {
-        saveCurrentScenarioOrOutline();
-      }
-      // Save background if we were parsing it
-      if (currentSection == _Section.background) {
-        background = Background(steps: currentSteps);
-      }
-
-      final prefix = line.startsWith('Scenario Outline:') ? 'Scenario Outline:' : 'Scenario Template:';
-      currentScenarioName = line.substring(prefix.length).trim();
-      currentScenarioTags = List.from(pendingTags);
-      pendingTags = [];
-      currentSteps = [];
-      currentExamples = [];
-      currentSection = _Section.scenarioOutline;
-      isOutline = true;
-      inDescription = false;
-      continue;
-    }
-
-    // Parse Examples
-    if (line.startsWith('Examples:') || line.startsWith('Scenarios:')) {
-      // Save previous example table if exists
-      saveCurrentExampleTable();
-
-      final prefix = line.startsWith('Examples:') ? 'Examples:' : 'Scenarios:';
-      currentExampleName = line.substring(prefix.length).trim();
-      currentExampleTags = List.from(pendingTags);
-      pendingTags = [];
-      currentSection = _Section.examples;
-      exampleLocation = SourceLocation(filePath: filePath, line: currentLineNumber);
-      continue;
-    }
-
-    // Parse Scenario
-    if (line.startsWith('Scenario:')) {
-      // Save previous scenario/outline if exists
-      if ((currentSection == _Section.scenario ||
-              currentSection == _Section.scenarioOutline ||
-              currentSection == _Section.examples) &&
-          currentScenarioName.isNotEmpty) {
-        saveCurrentScenarioOrOutline();
-      }
-      // Save background if we were parsing it
-      if (currentSection == _Section.background) {
-        background = Background(steps: currentSteps);
-      }
-
-      currentScenarioName = line.substring('Scenario:'.length).trim();
-      currentScenarioTags = List.from(pendingTags);
-      pendingTags = [];
-      currentSteps = [];
-      currentSection = _Section.scenario;
-      isOutline = false;
-      inDescription = false;
-      continue;
-    }
-
-    // Parse steps
-    final step = _parseStep(line, filePath, currentLineNumber);
-    if (step != null) {
-      if (collectingTable) attachTableToLastStep();
-      currentSteps.add(step);
-      inDescription = false;
-      continue;
-    }
-
-    // Collect description lines (after Feature, before Background/Scenario)
-    if (inDescription && currentSection == _Section.feature) {
-      descriptionLines.add(line);
-    }
-  }
-
-  // Finalize any pending table/docstring
-  if (collectingTable) attachTableToLastStep();
-  if (collectingDocString) attachDocStringToLastStep();
-
-  // Save last scenario/outline
-  if ((currentSection == _Section.scenario ||
-          currentSection == _Section.scenarioOutline ||
-          currentSection == _Section.examples) &&
-      currentScenarioName.isNotEmpty) {
-    saveCurrentScenarioOrOutline();
-  }
-  // Save background if feature ends with it (edge case)
-  if (currentSection == _Section.background) {
-    background = Background(steps: currentSteps);
   }
 
   return Feature(
-    name: featureName ?? 'Unnamed Feature',
+    name: f.name.isEmpty ? 'Unnamed Feature' : f.name,
     filePath: filePath,
-    description: descriptionLines.isNotEmpty ? descriptionLines.join('\n') : null,
-    tags: featureTags,
+    description: _cleanDescription(f.description),
+    tags: f.tags.map((t) => _cleanTag(t.name)).toList(),
     background: background,
     scenarios: scenarios,
     scenarioOutlines: scenarioOutlines,
   );
 }
 
-/// Parses a table row, splitting by | and trimming cells.
-List<String> _parseTableRow(String line) {
-  return line.split('|').map((cell) => cell.trim()).where((cell) => cell.isNotEmpty).toList();
-}
+void _addScenarioOrOutline(
+  cm.Scenario sc,
+  String filePath,
+  List<Scenario> scenarios,
+  List<ScenarioOutline> scenarioOutlines, {
+  List<String> ruleTags = const [],
+  Background? extraBackground,
+}) {
+  final tags = [...ruleTags, ...sc.tags.map((t) => _cleanTag(t.name))];
 
-Step? _parseStep(String line, String filePath, int lineNumber) {
-  final patterns = {
-    'Given ': StepKeyword.given,
-    'When ': StepKeyword.when,
-    'Then ': StepKeyword.then,
-    'And ': StepKeyword.and,
-    'But ': StepKeyword.but,
-  };
+  final extraSteps = extraBackground?.steps ?? const <Step>[];
+  final scenarioSteps = sc.steps.map((s) => _convertStep(s, filePath)).toList();
+  final allSteps = [...extraSteps, ...scenarioSteps];
 
-  for (final entry in patterns.entries) {
-    if (line.startsWith(entry.key)) {
-      return Step(
-        keyword: entry.value,
-        text: line.substring(entry.key.length).trim(),
-        location: SourceLocation(filePath: filePath, line: lineNumber),
+  if (sc.examples.isEmpty) {
+    scenarios.add(Scenario(name: sc.name, tags: tags, steps: allSteps));
+  } else {
+    final examples = sc.examples.map((ex) {
+      final headers = ex.tableHeader?.cells.map((c) => c.value).toList() ?? [];
+      final rows = ex.tableBody.map((r) => r.cells.map((c) => c.value).toList()).toList();
+      return ExampleTable(
+        name: ex.name.trim().isNotEmpty ? ex.name.trim() : null,
+        tags: ex.tags.map((t) => _cleanTag(t.name)).toList(),
+        headers: headers,
+        rows: rows,
+        location: SourceLocation(filePath: filePath, line: ex.location.line, column: ex.location.column),
       );
-    }
+    }).toList();
+
+    scenarioOutlines.add(ScenarioOutline(name: sc.name, tags: tags, steps: allSteps, examples: examples));
   }
-  return null;
 }
 
-enum _Section { none, feature, background, scenario, scenarioOutline, examples }
+Step _convertStep(cm.Step s, String filePath) {
+  final keyword = _mapKeyword(s.keyword, s.keywordType);
+  return Step(
+    keyword: keyword,
+    text: s.text.trim(),
+    location: SourceLocation(filePath: filePath, line: s.location.line, column: s.location.column),
+    dataTable: _mapDataTable(s.dataTable, filePath),
+    docString: _mapDocString(s.docString, filePath),
+    originalKeyword: s.keyword,
+  );
+}
+
+StepKeyword _mapKeyword(String keyword, cm.StepKeywordType? keywordType) {
+  final trimmed = keyword.trim().toLowerCase();
+  switch (trimmed) {
+    case 'given':
+      return StepKeyword.given;
+    case 'when':
+      return StepKeyword.when;
+    case 'then':
+      return StepKeyword.then;
+    case 'and':
+      return StepKeyword.and;
+    case 'but':
+      return StepKeyword.but;
+    case '*':
+      return StepKeyword.star;
+    default:
+      if (keywordType != null) {
+        switch (keywordType) {
+          case cm.StepKeywordType.context:
+            return StepKeyword.given;
+          case cm.StepKeywordType.action:
+            return StepKeyword.when;
+          case cm.StepKeywordType.outcome:
+            return StepKeyword.then;
+          case cm.StepKeywordType.conjunction:
+            return StepKeyword.and;
+          case cm.StepKeywordType.unknown:
+            return StepKeyword.star;
+        }
+      }
+      return StepKeyword.given;
+  }
+}
+
+DataTable? _mapDataTable(cm.DataTable? table, String filePath) {
+  if (table == null || table.rows.isEmpty) return null;
+  final headerRow = table.rows.first;
+  final headers = headerRow.cells.map((c) => c.value).toList();
+  final rows = table.rows.skip(1).map((r) => r.cells.map((c) => c.value).toList()).toList();
+  return DataTable(
+    headers: headers,
+    rows: rows,
+    location: SourceLocation(filePath: filePath, line: headerRow.location.line, column: headerRow.location.column),
+  );
+}
+
+DocString? _mapDocString(cm.DocString? docString, String filePath) {
+  if (docString == null) return null;
+  return DocString(
+    content: docString.content,
+    mediaType: docString.mediaType != null && docString.mediaType!.isNotEmpty ? docString.mediaType : null,
+    location: SourceLocation(filePath: filePath, line: docString.location.line, column: docString.location.column),
+  );
+}
+
+Background _convertBackground(cm.Background bg, String filePath) {
+  return Background(steps: bg.steps.map((s) => _convertStep(s, filePath)).toList());
+}
+
+String? _cleanDescription(String? raw) {
+  if (raw == null || raw.trim().isEmpty) return null;
+  return raw.split('\n').map((l) => l.trim()).where((l) => l.isNotEmpty).join('\n');
+}
+
+String _cleanTag(String tag) => tag.startsWith('@') ? tag.substring(1) : tag;
 
 /// Discovers all .feature files using the provided source.
 ///
 /// If [rootPath] is a .feature file, returns that single file.
 /// If [rootPath] is a directory, recursively finds all .feature files.
-Future<List<String>> discoverFeatureFiles(
-  String rootPath,
-  FeatureSource source,
-) async {
+Future<List<String>> discoverFeatureFiles(String rootPath, FeatureSource source) async {
   return source.list(rootPath);
 }
 
 /// Reads and parses a feature file using the provided source.
-Future<Feature> parseFeatureFile(String filePath, FeatureSource source) async {
+Future<Feature> parseFeatureFile(
+  String filePath,
+  FeatureSource source, {
+  void Function(String message)? onWarning,
+}) async {
   final content = await source.read(filePath);
-  return parseFeature(content, filePath);
+  return parseFeature(content, filePath, onWarning: onWarning);
 }

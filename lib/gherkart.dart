@@ -112,6 +112,7 @@ export 'src/feature_parser.dart'
         DocString,
         ExampleTable,
         Feature,
+        GherkinParseException,
         Scenario,
         ScenarioOutline,
         SourceLocation,
@@ -119,7 +120,8 @@ export 'src/feature_parser.dart'
         StepKeyword,
         discoverFeatureFiles,
         parseFeature,
-        parseFeatureFile;
+        parseFeatureFile,
+        sanitizeGherkin;
 export 'src/feature_source.dart' show AssetSource, FeatureSource, FeatureSourceException;
 export 'src/feature_test_factory.dart'
     show FeatureTestFactory, MissingStepsException, TestCase, TestGroup, TestPlan, TestStructure;

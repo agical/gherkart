@@ -10,20 +10,14 @@ void main() {
     group('configuration', () {
       test('creates with root path and registry', () {
         final registry = StepRegistry<void>();
-        final factory = FeatureTestFactory(
-          rootPath: 'test/features',
-          registry: registry,
-        );
+        final factory = FeatureTestFactory(rootPath: 'test/features', registry: registry);
 
         expect(factory.rootPath, 'test/features');
         expect(factory.registry, registry);
       });
 
       test('defaults to tree structure', () {
-        final factory = FeatureTestFactory(
-          rootPath: 'test/features',
-          registry: StepRegistry<void>(),
-        );
+        final factory = FeatureTestFactory(rootPath: 'test/features', registry: StepRegistry<void>());
 
         expect(factory.structure, TestStructure.tree);
       });
@@ -50,10 +44,7 @@ void main() {
           ],
         );
 
-        final factory = FeatureTestFactory(
-          rootPath: 'test/features',
-          registry: StepRegistry<void>(),
-        );
+        final factory = FeatureTestFactory(rootPath: 'test/features', registry: StepRegistry<void>());
 
         final plan = factory.buildTestPlan([feature]);
 
@@ -73,16 +64,14 @@ void main() {
             ],
           ),
           scenarios: [
-            Scenario(name: 'View session', steps: [
-              Step(keyword: StepKeyword.when, text: 'I tap the session'),
-            ]),
+            Scenario(
+              name: 'View session',
+              steps: [Step(keyword: StepKeyword.when, text: 'I tap the session')],
+            ),
           ],
         );
 
-        final factory = FeatureTestFactory(
-          rootPath: 'test/features',
-          registry: StepRegistry<void>(),
-        );
+        final factory = FeatureTestFactory(rootPath: 'test/features', registry: StepRegistry<void>());
 
         final plan = factory.buildTestPlan([feature]);
 
@@ -120,6 +109,31 @@ void main() {
         expect(plan.groups[0].children, hasLength(2));
       });
 
+      test('builds test plan from feature parsed with Rule and bullet steps', () {
+        const content = '''
+Feature: Rules Demo
+  Background:
+    * database is connected
+
+  Rule: Admin rules
+    @admin
+    Example: Admin action
+      * do admin action
+''';
+        final feature = parseFeature(content, 'test/features/rules.feature');
+        final registry = StepRegistry<void>()..register('do admin action'.mapper(), (_, __) async {});
+        final factory = FeatureTestFactory(rootPath: 'test/features', registry: registry);
+
+        final plan = factory.buildTestPlan([feature]);
+        expect(plan.totalTests, 1);
+        expect(plan.groups[0].name, 'Rules Demo');
+        expect(plan.groups[0].backgroundSteps, hasLength(1));
+        expect(plan.groups[0].backgroundSteps[0].keyword, StepKeyword.star);
+        expect(plan.groups[0].tests[0].name, 'Admin action');
+        expect(plan.groups[0].tests[0].tags, contains('admin'));
+        expect(plan.groups[0].tests[0].steps[0].keyword, StepKeyword.star);
+      });
+
       test('flat structure has no nesting', () {
         final features = [
           Feature(
@@ -154,23 +168,12 @@ void main() {
             filePath: 'test/features/user.feature',
             tags: ['wip', 'users'],
             scenarios: [
-              Scenario(
-                name: 'Create user',
-                tags: ['create'],
-                steps: [],
-              ),
-              Scenario(
-                name: 'Delete user',
-                tags: [],
-                steps: [],
-              ),
+              Scenario(name: 'Create user', tags: ['create'], steps: []),
+              Scenario(name: 'Delete user', tags: [], steps: []),
             ],
           );
 
-          final factory = FeatureTestFactory(
-            rootPath: 'test/features',
-            registry: StepRegistry<void>(),
-          );
+          final factory = FeatureTestFactory(rootPath: 'test/features', registry: StepRegistry<void>());
 
           final plan = factory.buildTestPlan([feature]);
 
@@ -186,18 +189,11 @@ void main() {
             filePath: 'test.feature',
             tags: ['wip'],
             scenarios: [
-              Scenario(
-                name: 'Test',
-                tags: ['wip', 'other'],
-                steps: [],
-              ),
+              Scenario(name: 'Test', tags: ['wip', 'other'], steps: []),
             ],
           );
 
-          final factory = FeatureTestFactory(
-            rootPath: 'test/features',
-            registry: StepRegistry<void>(),
-          );
+          final factory = FeatureTestFactory(rootPath: 'test/features', registry: StepRegistry<void>());
 
           final plan = factory.buildTestPlan([feature]);
 
@@ -228,10 +224,7 @@ void main() {
           ],
         );
 
-        final factory = FeatureTestFactory(
-          rootPath: 'test/features',
-          registry: registry,
-        );
+        final factory = FeatureTestFactory(rootPath: 'test/features', registry: registry);
 
         final missing = factory.findMissingSteps([feature]);
 
@@ -239,9 +232,7 @@ void main() {
       });
 
       test('returns missing step texts', () {
-        final registry = StepRegistry<void>.fromMap({
-          'the app is running'.mapper(): (_, args) async {},
-        });
+        final registry = StepRegistry<void>.fromMap({'the app is running'.mapper(): (_, args) async {}});
 
         final feature = Feature(
           name: 'Test',
@@ -257,10 +248,7 @@ void main() {
           ],
         );
 
-        final factory = FeatureTestFactory(
-          rootPath: 'test/features',
-          registry: registry,
-        );
+        final factory = FeatureTestFactory(rootPath: 'test/features', registry: registry);
 
         final missing = factory.findMissingSteps([feature]);
 
@@ -275,22 +263,12 @@ void main() {
           name: 'Test',
           filePath: 'test.feature',
           background: Background(
-            steps: [
-              Step(keyword: StepKeyword.given, text: 'background step'),
-            ],
+            steps: [Step(keyword: StepKeyword.given, text: 'background step')],
           ),
-          scenarios: [
-            Scenario(
-              name: 'Test scenario',
-              steps: [],
-            ),
-          ],
+          scenarios: [Scenario(name: 'Test scenario', steps: [])],
         );
 
-        final factory = FeatureTestFactory(
-          rootPath: 'test/features',
-          registry: registry,
-        );
+        final factory = FeatureTestFactory(rootPath: 'test/features', registry: registry);
 
         final missing = factory.findMissingSteps([feature]);
 
@@ -306,23 +284,16 @@ void main() {
           scenarios: [
             Scenario(
               name: 'First',
-              steps: [
-                Step(keyword: StepKeyword.given, text: 'same step'),
-              ],
+              steps: [Step(keyword: StepKeyword.given, text: 'same step')],
             ),
             Scenario(
               name: 'Second',
-              steps: [
-                Step(keyword: StepKeyword.given, text: 'same step'),
-              ],
+              steps: [Step(keyword: StepKeyword.given, text: 'same step')],
             ),
           ],
         );
 
-        final factory = FeatureTestFactory(
-          rootPath: 'test/features',
-          registry: registry,
-        );
+        final factory = FeatureTestFactory(rootPath: 'test/features', registry: registry);
 
         final missing = factory.findMissingSteps([feature]);
 
@@ -334,10 +305,7 @@ void main() {
       test('generates code for missing steps', () {
         final registry = StepRegistry<void>();
 
-        final factory = FeatureTestFactory(
-          rootPath: 'test/features',
-          registry: registry,
-        );
+        final factory = FeatureTestFactory(rootPath: 'test/features', registry: registry);
 
         final placeholders = factory.generatePlaceholders([
           Step(keyword: StepKeyword.given, text: 'the app is running'),
@@ -352,39 +320,39 @@ void main() {
 
   group('TestPlan', () {
     test('counts total tests', () {
-      final plan = TestPlan(groups: [
-        TestGroup(
-          name: 'Feature 1',
-          tests: [
-            TestCase(name: 'Test 1', steps: []),
-            TestCase(name: 'Test 2', steps: []),
-          ],
-        ),
-        TestGroup(
-          name: 'Feature 2',
-          tests: [
-            TestCase(name: 'Test 3', steps: []),
-          ],
-        ),
-      ]);
+      final plan = TestPlan(
+        groups: [
+          TestGroup(
+            name: 'Feature 1',
+            tests: [
+              TestCase(name: 'Test 1', steps: []),
+              TestCase(name: 'Test 2', steps: []),
+            ],
+          ),
+          TestGroup(
+            name: 'Feature 2',
+            tests: [TestCase(name: 'Test 3', steps: [])],
+          ),
+        ],
+      );
 
       expect(plan.totalTests, 3);
     });
 
     test('counts nested tests', () {
-      final plan = TestPlan(groups: [
-        TestGroup(
-          name: 'Parent',
-          children: [
-            TestGroup(
-              name: 'Child',
-              tests: [
-                TestCase(name: 'Test 1', steps: []),
-              ],
-            ),
-          ],
-        ),
-      ]);
+      final plan = TestPlan(
+        groups: [
+          TestGroup(
+            name: 'Parent',
+            children: [
+              TestGroup(
+                name: 'Child',
+                tests: [TestCase(name: 'Test 1', steps: [])],
+              ),
+            ],
+          ),
+        ],
+      );
 
       expect(plan.totalTests, 1);
     });

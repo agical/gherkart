@@ -15,10 +15,14 @@ Parse Gherkin `.feature` files at runtime — no code generation required.
 | Feature | Description |
 |---------|-------------|
 | Scenarios & Background | `Scenario:`, `Background:` with Given / When / Then steps |
-| Scenario Outlines | `Scenario Outline:` with `Examples:` tables (`<param>` and `{param}` syntax) |
-| Data Tables | Step-attached structured tables |
-| Doc Strings | Multi-line `"""` text blocks on steps |
-| Tags | `@smoke`, `@wip`, `@slow` etc. with feature → scenario inheritance |
+| Rules & Scenarios | `Rule:` sections for grouping scenarios with rule-level backgrounds |
+| Scenario Outlines | `Scenario Outline:` / `Scenario Template:` with `Examples:` / `Scenarios:` tables (`<param>` syntax) |
+| Synonyms & Bullets | `Example:` as synonym for `Scenario:`, bullet steps (`*`) for Given / When / Then |
+| Internationalization | Native 70+ languages via `# language: <lang>` headers |
+| Data Tables | Step-attached structured tables with pipe escaping (`\|`) and empty cells |
+| Doc Strings | Multi-line text blocks with triple double-quotes (`"""`) or backticks (```` ``` ````) |
+| Tags | `@smoke`, `@wip`, `@slow` etc. with feature/rule → scenario inheritance |
+| Parse diagnostics | Real line and column error reporting via `GherkinParseException` |
 | Missing step detection | Reports unregistered steps with source locations |
 
 ### Gherkart Improvements
@@ -132,7 +136,7 @@ void main() async {
 
 ## Gherkin Parser
 
-The parser supports the full Gherkin syntax relevant to testing.
+The parser is powered by official Cucumber parser and compiler packages (`cucumber_gherkin` and `cucumber_messages`), supporting standard Gherkin syntax.
 
 ### Scenarios & Background
 
@@ -150,7 +154,33 @@ Feature: Background Demo
     Then the result is 15
 ```
 
-Background steps are prepended to every scenario in the feature.
+Background steps run before each scenario in the feature.
+
+### Rules & Scenarios
+
+> Example: [example/features/rules.feature](example/features/rules.feature)
+
+```gherkin
+Feature: Rules Demo
+
+  Rule: Identity with zero
+    Example: Adding zero keeps number unchanged
+      * I have the number 42
+      * I add 0
+      Then the result is 42
+
+  Rule: Addition with offset
+    Background:
+      * I have the number 10
+
+    Scenario: Add positive offset
+      * I add 5
+      Then the result is 15
+```
+
+- `Rule:` groups scenarios under business rules and can contain its own `Background:`. Rule-level background steps are prepended to each scenario in that rule.
+- `Example:` can be used interchangeably with `Scenario:`.
+- `*` (asterisk/bullet) can be used for any step keyword (`Given`, `When`, `Then`, `And`, `But`).
 
 ### Scenario Outlines
 
@@ -173,7 +203,37 @@ Scenario Outline: Addition with examples
     | 999 | 1   | 1000 |
 ```
 
-Each example row becomes a separate test case. Both `<placeholder>` and `{placeholder}` syntax are supported in step text.
+Each example row becomes a separate test case. Standard Gherkin `<placeholder>` syntax is used.
+`Scenario Template:` and `Scenarios:` are also supported as official synonyms.
+
+> **Migration Note:** Legacy `{placeholder}` syntax in Scenario Outlines is automatically converted with a deprecation warning and exact `grep` and `sed` commands to update your feature files.
+
+### Multi-Language (i18n)
+
+> Example: [example/features/i18n.feature](example/features/i18n.feature) +
+> [example/i18n_test.dart](example/i18n_test.dart)
+
+Add a `# language: <locale>` comment at the top of the feature file to write features in 70+ languages supported by Cucumber:
+
+```gherkin
+# language: fr
+Fonctionnalité: Démo multilingue
+  Règle: L'addition simple
+    Exemple: Additionner deux entiers
+      * J'ai le nombre 10
+      Quand J'ajoute 5
+      Alors le résultat est 15
+```
+
+Step definitions match the step text in that language:
+
+```dart
+final steps = StepRegistry<void>.fromMap({
+  "J'ai le nombre {n}".mapper(types: {'n': int}): ($, ctx) async { ... },
+  "J'ajoute {n}".mapper(types: {'n': int}): ($, ctx) async { ... },
+  'le résultat est {expected}'.mapper(types: {'expected': int}): ($, ctx) async { ... },
+});
+```
 
 ### Data Tables
 
@@ -191,7 +251,7 @@ Scenario: Add items from a table
   Then the total quantity is 10
 ```
 
-Access in step code via `ctx.tableRows`:
+Data tables support escaped pipes (`\|`) within cell content and empty cells. Access in step code via `ctx.tableRows`:
 
 ```dart
 'I add items:'.mapper(): ($, ctx) async {
@@ -207,6 +267,8 @@ Access in step code via `ctx.tableRows`:
 
 > Example: [example/features/doc_strings.feature](example/features/doc_strings.feature) +
 > [example/data_tables_test.dart](example/data_tables_test.dart)
+
+Doc strings can use either triple double-quotes (`"""`) or backticks (```` ``` ````), with optional media type tags:
 
 ```gherkin
 Scenario: Parse JSON configuration
@@ -679,6 +741,7 @@ await runBddTests<PatrolTester>(
 | `ScenarioOutline`   | Template scenario expanded via Examples tables   |
 | `DataTable`         | Structured table data attached to a step         |
 | `DocString`         | Multi-line string attached to a step             |
+| `GherkinParseException` | Exception with file, line, and column on parse errors |
 | `TestPlan`          | Organized test groups ready for execution        |
 | `FeatureTestFactory` | Builds test plans from parsed features          |
 | `MarkdownFileReporter` | Generates Markdown docs from test results     |
@@ -696,10 +759,14 @@ just test-unit
 just test-example
 
 # Run individual examples
-just test-example-demo       # scenarios, background, tags, outlines
+just test-example-demo       # scenarios, background, tags, outlines, rules
 just test-example-data       # data tables, doc strings, registry merging
 just test-example-scheme     # scheme resolution, translation handlers
 just test-example-reporter   # reporters, lifecycle hooks, tree structure
+just test-example-i18n       # multi-language (i18n) BDD tests
+
+# Run tests with coverage
+just test-coverage
 
 # Static analysis
 just analyze

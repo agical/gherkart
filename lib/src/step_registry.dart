@@ -30,12 +30,7 @@ class StepContext {
   /// Source location of the step for error reporting.
   final SourceLocation? location;
 
-  const StepContext({
-    required this.args,
-    this.table,
-    this.docString,
-    this.location,
-  });
+  const StepContext({required this.args, this.table, this.docString, this.location});
 
   /// Creates a StepContext with only args (for direct step calls).
   factory StepContext.withArgs(List<dynamic> args) => StepContext(args: args);
@@ -97,12 +92,7 @@ class StepMatch<T> {
   }) {
     return function(
       context,
-      StepContext(
-        args: resolvedArgs ?? params,
-        table: table,
-        docString: docString,
-        location: location,
-      ),
+      StepContext(args: resolvedArgs ?? params, table: table, docString: docString, location: location),
     );
   }
 }

@@ -11,10 +11,7 @@ void main() {
       test('matches registered step with no parameters', () {
         final registry = StepRegistry<void>();
 
-        registry.register(
-          'the app is running'.mapper(),
-          (_, ctx) async {},
-        );
+        registry.register('the app is running'.mapper(), (_, ctx) async {});
 
         final match = registry.match('the app is running');
 
@@ -26,12 +23,9 @@ void main() {
         final registry = StepRegistry<void>();
         var called = false;
 
-        registry.register(
-          'the app is running'.mapper(),
-          (_, ctx) async {
-            called = true;
-          },
-        );
+        registry.register('the app is running'.mapper(), (_, ctx) async {
+          called = true;
+        });
 
         final match = registry.match('the app is running');
         await match!.execute(null);
@@ -43,12 +37,9 @@ void main() {
         final registry = StepRegistry<void>();
         String? capturedPage;
 
-        registry.register(
-          'I navigate to "{page}"'.mapper(),
-          (_, ctx) async {
-            capturedPage = ctx.args[0] as String;
-          },
-        );
+        registry.register('I navigate to "{page}"'.mapper(), (_, ctx) async {
+          capturedPage = ctx.args[0] as String;
+        });
 
         final match = registry.match('I navigate to "Sessions"');
         await match!.execute(null);
@@ -87,12 +78,9 @@ void main() {
         final registry = StepRegistry<void>();
         int? capturedCount;
 
-        registry.register(
-          'I wait {count} seconds'.mapper(types: {'count': int}),
-          (_, ctx) async {
-            capturedCount = ctx.args[0] as int;
-          },
-        );
+        registry.register('I wait {count} seconds'.mapper(types: {'count': int}), (_, ctx) async {
+          capturedCount = ctx.args[0] as int;
+        });
 
         final match = registry.match('I wait 5 seconds');
         await match!.execute(null);
@@ -165,12 +153,8 @@ void main() {
 
     group('merge', () {
       test('combines two registries', () {
-        final registry1 = StepRegistry<void>.fromMap({
-          'step one'.mapper(): (_, ctx) async {},
-        });
-        final registry2 = StepRegistry<void>.fromMap({
-          'step two'.mapper(): (_, ctx) async {},
-        });
+        final registry1 = StepRegistry<void>.fromMap({'step one'.mapper(): (_, ctx) async {}});
+        final registry2 = StepRegistry<void>.fromMap({'step two'.mapper(): (_, ctx) async {}});
 
         final merged = registry1.merge(registry2);
 
@@ -223,12 +207,9 @@ void main() {
         final registry = StepRegistry<void>();
         String? capturedPage;
 
-        registry.register(
-          'I navigate to "{page}"'.mapper(),
-          (_, ctx) async {
-            capturedPage = ctx.arg<String>(0);
-          },
-        );
+        registry.register('I navigate to "{page}"'.mapper(), (_, ctx) async {
+          capturedPage = ctx.arg<String>(0);
+        });
 
         final match = registry.match('I navigate to "Sessions"');
         await match!.execute(null);
@@ -240,12 +221,9 @@ void main() {
         final registry = StepRegistry<void>();
         String? captured;
 
-        registry.register(
-          'I see "{text}"'.mapper(),
-          (_, ctx) async {
-            captured = ctx.firstArg;
-          },
-        );
+        registry.register('I see "{text}"'.mapper(), (_, ctx) async {
+          captured = ctx.firstArg;
+        });
 
         final match = registry.match('I see "Hello"');
         await match!.execute(null);
@@ -257,12 +235,9 @@ void main() {
         final registry = StepRegistry<void>();
         List<Map<String, String>>? capturedRows;
 
-        registry.register(
-          'the following users:'.mapper(),
-          (_, ctx) async {
-            capturedRows = ctx.tableRows;
-          },
-        );
+        registry.register('the following users:'.mapper(), (_, ctx) async {
+          capturedRows = ctx.tableRows;
+        });
 
         final match = registry.match('the following users:');
         final table = DataTable(
@@ -283,12 +258,9 @@ void main() {
         final registry = StepRegistry<void>();
         bool? hasTable;
 
-        registry.register(
-          'users:'.mapper(),
-          (_, ctx) async {
-            hasTable = ctx.hasTable;
-          },
-        );
+        registry.register('users:'.mapper(), (_, ctx) async {
+          hasTable = ctx.hasTable;
+        });
 
         final match = registry.match('users:');
         await match!.execute(
@@ -303,12 +275,9 @@ void main() {
         final registry = StepRegistry<void>();
         bool? hasTable;
 
-        registry.register(
-          'no table'.mapper(),
-          (_, ctx) async {
-            hasTable = ctx.hasTable;
-          },
-        );
+        registry.register('no table'.mapper(), (_, ctx) async {
+          hasTable = ctx.hasTable;
+        });
 
         final match = registry.match('no table');
         await match!.execute(null);
@@ -320,12 +289,9 @@ void main() {
         final registry = StepRegistry<void>();
         String? capturedContent;
 
-        registry.register(
-          'the JSON:'.mapper(),
-          (_, ctx) async {
-            capturedContent = ctx.docContent;
-          },
-        );
+        registry.register('the JSON:'.mapper(), (_, ctx) async {
+          capturedContent = ctx.docContent;
+        });
 
         final match = registry.match('the JSON:');
         final docString = DocString(content: '{"key": "value"}');
@@ -339,12 +305,9 @@ void main() {
         final registry = StepRegistry<void>();
         bool? hasDoc;
 
-        registry.register(
-          'content:'.mapper(),
-          (_, ctx) async {
-            hasDoc = ctx.hasDocString;
-          },
-        );
+        registry.register('content:'.mapper(), (_, ctx) async {
+          hasDoc = ctx.hasDocString;
+        });
 
         final match = registry.match('content:');
         await match!.execute(null, docString: DocString(content: 'text'));
@@ -356,12 +319,9 @@ void main() {
         final registry = StepRegistry<void>();
         SourceLocation? capturedLocation;
 
-        registry.register(
-          'a step'.mapper(),
-          (_, ctx) async {
-            capturedLocation = ctx.location;
-          },
-        );
+        registry.register('a step'.mapper(), (_, ctx) async {
+          capturedLocation = ctx.location;
+        });
 
         final match = registry.match('a step');
         final loc = SourceLocation(filePath: 'test.feature', line: 42);
@@ -376,16 +336,13 @@ void main() {
         final registry = StepRegistry<void>();
         Object? caughtError;
 
-        registry.register(
-          'no table'.mapper(),
-          (_, ctx) async {
-            try {
-              ctx.tableRows;
-            } catch (e) {
-              caughtError = e;
-            }
-          },
-        );
+        registry.register('no table'.mapper(), (_, ctx) async {
+          try {
+            ctx.tableRows;
+          } catch (e) {
+            caughtError = e;
+          }
+        });
 
         final match = registry.match('no table');
         await match!.execute(null);
@@ -397,16 +354,13 @@ void main() {
         final registry = StepRegistry<void>();
         Object? caughtError;
 
-        registry.register(
-          'no doc'.mapper(),
-          (_, ctx) async {
-            try {
-              ctx.docContent;
-            } catch (e) {
-              caughtError = e;
-            }
-          },
-        );
+        registry.register('no doc'.mapper(), (_, ctx) async {
+          try {
+            ctx.docContent;
+          } catch (e) {
+            caughtError = e;
+          }
+        });
 
         final match = registry.match('no doc');
         await match!.execute(null);

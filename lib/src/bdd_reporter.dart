@@ -42,12 +42,7 @@ class ReportFeature {
   /// The parsed scenarios from the feature file (for showing unexecuted scenarios).
   final List<parser.Scenario> sourceScenarios;
 
-  ReportFeature({
-    required this.name,
-    required this.path,
-    this.tags = const [],
-    this.sourceScenarios = const [],
-  });
+  ReportFeature({required this.name, required this.path, this.tags = const [], this.sourceScenarios = const []});
 
   @override
   String toString() => 'ReportFeature($name, $path, $tags)';
@@ -82,12 +77,7 @@ class ReportStep {
   final bool hasTable;
   final bool hasDocString;
 
-  ReportStep({
-    required this.keyword,
-    required this.text,
-    this.hasTable = false,
-    this.hasDocString = false,
-  });
+  ReportStep({required this.keyword, required this.text, this.hasTable = false, this.hasDocString = false});
 
   @override
   String toString() => 'ReportStep($keyword $text)';
@@ -101,26 +91,14 @@ class StepResult {
   final Duration? duration;
   final String? error;
 
-  const StepResult._({
-    required this.status,
-    this.duration,
-    this.error,
-  });
+  const StepResult._({required this.status, this.duration, this.error});
 
-  factory StepResult.passed(Duration duration) => StepResult._(
-        status: StepStatus.passed,
-        duration: duration,
-      );
+  factory StepResult.passed(Duration duration) => StepResult._(status: StepStatus.passed, duration: duration);
 
-  factory StepResult.failed(Duration duration, String error) => StepResult._(
-        status: StepStatus.failed,
-        duration: duration,
-        error: error,
-      );
+  factory StepResult.failed(Duration duration, String error) =>
+      StepResult._(status: StepStatus.failed, duration: duration, error: error);
 
-  factory StepResult.skipped() => const StepResult._(
-        status: StepStatus.skipped,
-      );
+  factory StepResult.skipped() => const StepResult._(status: StepStatus.skipped);
 
   @override
   String toString() => 'StepResult($status, ${duration?.inMilliseconds}ms)';
@@ -131,23 +109,13 @@ class ScenarioResult {
   final ScenarioStatus status;
   final String? error;
 
-  const ScenarioResult._({
-    required this.status,
-    this.error,
-  });
+  const ScenarioResult._({required this.status, this.error});
 
-  factory ScenarioResult.passed() => const ScenarioResult._(
-        status: ScenarioStatus.passed,
-      );
+  factory ScenarioResult.passed() => const ScenarioResult._(status: ScenarioStatus.passed);
 
-  factory ScenarioResult.failed(String error) => ScenarioResult._(
-        status: ScenarioStatus.failed,
-        error: error,
-      );
+  factory ScenarioResult.failed(String error) => ScenarioResult._(status: ScenarioStatus.failed, error: error);
 
-  factory ScenarioResult.skipped() => const ScenarioResult._(
-        status: ScenarioStatus.skipped,
-      );
+  factory ScenarioResult.skipped() => const ScenarioResult._(status: ScenarioStatus.skipped);
 
   @override
   String toString() => 'ScenarioResult($status)';
@@ -159,17 +127,11 @@ class FeatureResult {
 
   const FeatureResult._({required this.status});
 
-  factory FeatureResult.passed() => const FeatureResult._(
-        status: FeatureStatus.passed,
-      );
+  factory FeatureResult.passed() => const FeatureResult._(status: FeatureStatus.passed);
 
-  factory FeatureResult.failed() => const FeatureResult._(
-        status: FeatureStatus.failed,
-      );
+  factory FeatureResult.failed() => const FeatureResult._(status: FeatureStatus.failed);
 
-  factory FeatureResult.mixed() => const FeatureResult._(
-        status: FeatureStatus.mixed,
-      );
+  factory FeatureResult.mixed() => const FeatureResult._(status: FeatureStatus.mixed);
 
   @override
   String toString() => 'FeatureResult($status)';
@@ -481,15 +443,17 @@ class SummaryReporter implements BddReporter {
 
   @override
   void flush() {
-    onSummary(TestSummary(
-      featureCount: _featureCount,
-      scenarioPassed: _scenarioPassed,
-      scenarioFailed: _scenarioFailed,
-      scenarioSkipped: _scenarioSkipped,
-      stepPassed: _stepPassed,
-      stepFailed: _stepFailed,
-      stepSkipped: _stepSkipped,
-    ));
+    onSummary(
+      TestSummary(
+        featureCount: _featureCount,
+        scenarioPassed: _scenarioPassed,
+        scenarioFailed: _scenarioFailed,
+        scenarioSkipped: _scenarioSkipped,
+        stepPassed: _stepPassed,
+        stepFailed: _stepFailed,
+        stepSkipped: _stepSkipped,
+      ),
+    );
   }
 }
 
@@ -639,10 +603,7 @@ class FileReporter implements BddReporter {
   ///
   /// [writer] can be provided for testing to capture output instead of
   /// writing to the file system.
-  FileReporter({
-    required this.outputPath,
-    this.writer,
-  });
+  FileReporter({required this.outputPath, this.writer});
 
   @override
   void onFeatureStart(ReportFeature feature) {
@@ -711,8 +672,10 @@ class FileReporter implements BddReporter {
     buffer.writeln();
     buffer.writeln('## Summary');
     buffer.writeln();
-    buffer.writeln('${_features.length} feature${_features.length == 1 ? '' : 's'}, '
-        '$scenarioCount scenario${scenarioCount == 1 ? '' : 's'}');
+    buffer.writeln(
+      '${_features.length} feature${_features.length == 1 ? '' : 's'}, '
+      '$scenarioCount scenario${scenarioCount == 1 ? '' : 's'}',
+    );
 
     final content = buffer.toString();
     if (writer != null) {
@@ -820,9 +783,7 @@ class ReporterConfig {
       return _createSingleReporter(allModes.first);
     }
 
-    return CompositeReporter(
-      allModes.map(_createSingleReporter).toList(),
-    );
+    return CompositeReporter(allModes.map(_createSingleReporter).toList());
   }
 
   BddReporter _createSingleReporter(ReportMode mode) {
@@ -830,25 +791,16 @@ class ReporterConfig {
 
     switch (mode) {
       case ReportMode.continuous:
-        return ContinuousReporter(
-          onEvent: (event) => print(_formatEvent(event)),
-        );
+        return ContinuousReporter(onEvent: (event) => print(_formatEvent(event)));
       case ReportMode.full:
-        return BufferedReporter(
-          onComplete: (results) => print(results.toString()),
-        );
+        return BufferedReporter(onComplete: (results) => print(results.toString()));
       case ReportMode.summary:
-        return SummaryReporter(
-          onSummary: (summary) => print(summary.toString()),
-        );
+        return SummaryReporter(onSummary: (summary) => print(summary.toString()));
       case ReportMode.file:
         if (outputDir == null) {
           throw ArgumentError('outputDir is required for file mode');
         }
-        return MarkdownFileReporter(
-          outputDir: outputDir!,
-          cleanFirst: cleanFirst,
-        );
+        return MarkdownFileReporter(outputDir: outputDir!, cleanFirst: cleanFirst);
     }
   }
 
@@ -859,9 +811,10 @@ class ReporterConfig {
       ScenarioStartEvent e => '  🎬 Scenario: ${e.scenario.name}',
       ScenarioCompleteEvent _ => '',
       StepStartEvent e => '    ${e.step.keyword} ${e.step.text}',
-      StepCompleteEvent e => e.result.status == StepStatus.passed
-          ? '    ✓ ${e.step.keyword} ${e.step.text}'
-          : '    ✗ ${e.step.keyword} ${e.step.text}',
+      StepCompleteEvent e =>
+        e.result.status == StepStatus.passed
+            ? '    ✓ ${e.step.keyword} ${e.step.text}'
+            : '    ✗ ${e.step.keyword} ${e.step.text}',
     };
   }
 

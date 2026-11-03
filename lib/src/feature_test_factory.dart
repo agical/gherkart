@@ -27,11 +27,7 @@ class FeatureTestFactory<T> {
   final StepRegistry<T> registry;
   final TestStructure structure;
 
-  FeatureTestFactory({
-    required this.rootPath,
-    required this.registry,
-    this.structure = TestStructure.tree,
-  });
+  FeatureTestFactory({required this.rootPath, required this.registry, this.structure = TestStructure.tree});
 
   /// Builds a test plan from parsed features.
   TestPlan buildTestPlan(List<Feature> features) {
@@ -74,10 +70,7 @@ class FeatureTestFactory<T> {
       } else {
         // Nested folder
         final children = folderFeatures.map(_featureToGroup).toList();
-        rootGroups.add(TestGroup(
-          name: folder,
-          children: children,
-        ));
+        rootGroups.add(TestGroup(name: folder, children: children));
       }
     }
 
@@ -88,18 +81,10 @@ class FeatureTestFactory<T> {
     final tests = feature.allScenarios.map((scenario) {
       // Merge feature tags with scenario tags (deduplicated via Set)
       final mergedTags = {...feature.tags, ...scenario.tags}.toList();
-      return TestCase(
-        name: scenario.name,
-        steps: scenario.steps,
-        tags: mergedTags,
-      );
+      return TestCase(name: scenario.name, steps: scenario.steps, tags: mergedTags);
     }).toList();
 
-    return TestGroup(
-      name: feature.name,
-      tests: tests,
-      backgroundSteps: feature.background?.steps ?? [],
-    );
+    return TestGroup(name: feature.name, tests: tests, backgroundSteps: feature.background?.steps ?? []);
   }
 
   String _getRelativePath(String filePath) {
@@ -177,12 +162,7 @@ class TestGroup {
   final List<TestGroup> children;
   final List<Step> backgroundSteps;
 
-  TestGroup({
-    required this.name,
-    this.tests = const [],
-    this.children = const [],
-    this.backgroundSteps = const [],
-  });
+  TestGroup({required this.name, this.tests = const [], this.children = const [], this.backgroundSteps = const []});
 
   int get totalTests => tests.length + children.fold(0, (sum, c) => sum + c.totalTests);
 }
@@ -193,11 +173,7 @@ class TestCase {
   final List<Step> steps;
   final List<String> tags;
 
-  TestCase({
-    required this.name,
-    required this.steps,
-    this.tags = const [],
-  });
+  TestCase({required this.name, required this.steps, this.tags = const []});
 }
 
 /// Thrown when feature files reference steps that aren't registered.
@@ -207,6 +183,7 @@ class MissingStepsException implements Exception {
   MissingStepsException(this.missingSteps);
 
   @override
-  String toString() => 'MissingStepsException: ${missingSteps.length} step(s) not found:\n'
+  String toString() =>
+      'MissingStepsException: ${missingSteps.length} step(s) not found:\n'
       '${missingSteps.map((s) => '  - ${s.location}: ${s.text}').join('\n')}';
 }

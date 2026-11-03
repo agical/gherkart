@@ -86,11 +86,7 @@ void main() {
 
       test('formats step with timing', () {
         const output = BddOutput.verbose();
-        final formatted = output.formatStepComplete(
-          'Given',
-          'the app is running',
-          Duration(milliseconds: 150),
-        );
+        final formatted = output.formatStepComplete('Given', 'the app is running', Duration(milliseconds: 150));
 
         expect(formatted, contains('Given'));
         expect(formatted, contains('the app is running'));
@@ -99,11 +95,7 @@ void main() {
 
       test('formats step without timing when disabled', () {
         const output = BddOutput.steps();
-        final formatted = output.formatStepComplete(
-          'When',
-          'I tap the button',
-          Duration(milliseconds: 100),
-        );
+        final formatted = output.formatStepComplete('When', 'I tap the button', Duration(milliseconds: 100));
 
         expect(formatted, contains('When'));
         expect(formatted, contains('I tap the button'));

@@ -34,13 +34,7 @@ final schemeSteps = StepRegistry<void>.fromMap({
 // ---------------------------------------------------------------------------
 
 final resolver = SchemeResolver()
-  ..register(
-    't',
-    createMapTranslationHandler({
-      'hello': 'Hello, World!',
-      'goodbye': 'See you later!',
-    }),
-  )
+  ..register('t', createMapTranslationHandler({'hello': 'Hello, World!', 'goodbye': 'See you later!'}))
   ..register('x', (String key, Map<String, String> params) async {
     return [key, ...params.values].join(' ');
   });
@@ -70,11 +64,6 @@ TestAdapter<void> _createTestAdapter() {
   );
 }
 
-void _testFunction(
-  String name, {
-  List<String>? tags,
-  bool skip = false,
-  Future<void> Function(void)? callback,
-}) {
+void _testFunction(String name, {List<String>? tags, bool skip = false, Future<void> Function(void)? callback}) {
   test(name, () => callback!(null), tags: tags, skip: skip);
 }

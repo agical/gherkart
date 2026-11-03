@@ -42,11 +42,17 @@ test-example-scheme:
 test-example-reporter:
     dart test example/reporter_test.dart
 
+# Run multi-language (i18n) example
+[group('test')]
+test-example-i18n:
+    dart test example/i18n_test.dart
+
 # Run tests with coverage
 [group('test')]
 test-coverage:
     dart test --coverage=coverage test/unit/
-    @echo "Coverage report in coverage/lcov.info"
+    dart run coverage:format_coverage --lcov --in=coverage --out=coverage/lcov.info --report-on=lib
+    dart run tool/report_coverage.dart
 
 # === Code Quality ===
 
