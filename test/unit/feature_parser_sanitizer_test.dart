@@ -22,9 +22,42 @@ Scenario: Missing feature header
         ),
       );
     });
+
+    test('GherkinParseException formats toString with line, column, or file', () {
+      final e1 = GherkinParseException('syntax error', filePath: 'test.feature', line: 10, column: 5);
+      expect(e1.toString(), 'GherkinParseException: syntax error at test.feature:10:5');
+
+      final e2 = GherkinParseException('syntax error', filePath: 'test.feature', line: 10);
+      expect(e2.toString(), 'GherkinParseException: syntax error at test.feature:10');
+
+      final e3 = GherkinParseException('syntax error', filePath: 'test.feature');
+      expect(e3.toString(), 'GherkinParseException: syntax error at test.feature');
+    });
   });
 
   group('Pre-sanitizer deprecations and migration suggestions', () {
+    test('emits no warnings when feature uses standard Gherkin syntax', () {
+      const content = '''
+Feature: Clean Standard Feature
+  Background:
+    Given setup
+
+  Scenario Outline: Standard outline
+    Given <a> and <b>
+    When checking
+    Then result is <sum>
+
+    Examples:
+      | a | b | sum |
+      | 1 | 2 | 3   |
+''';
+      final warnings = <String>[];
+      final sanitized = sanitizeGherkin(content, 'clean.feature', onWarning: warnings.add);
+
+      expect(warnings, isEmpty);
+      expect(sanitized, content);
+    });
+
     test('warns on import statements with sed command', () {
       const content = '''
 import 'package:patrol_finders/patrol_finders.dart';
@@ -94,6 +127,61 @@ Feature: Test
       expect(sanitized, contains('Then the result is <sum>'));
       // Verify non-header {t:key} is preserved untouched!
       expect(sanitized, contains('And I also have "{t:key}"'));
+    });
+
+    test('sanitizes multiple scenario outlines in the same file independently', () {
+      const content = '''
+Feature: Multiple Outlines
+  Scenario Outline: First outline
+    Given first is {x}
+
+    Examples:
+      | x |
+      | 1 |
+
+  Scenario Outline: Second outline
+    Given second is {y}
+    And not_header is {x}
+
+    Examples:
+      | y |
+      | 2 |
+''';
+      final warnings = <String>[];
+      final sanitized = sanitizeGherkin(content, 'multi.feature', onWarning: warnings.add);
+
+      expect(warnings, hasLength(2));
+      expect(warnings[0], contains('(x)'));
+      expect(warnings[1], contains('(y)'));
+
+      expect(sanitized, contains('Given first is <x>'));
+      expect(sanitized, contains('Given second is <y>'));
+      // In second outline, {x} is not in Examples table headers, so it is preserved!
+      expect(sanitized, contains('And not_header is {x}'));
+    });
+
+    test('sanitizes placeholders in DataTables and DocStrings inside outlines', () {
+      const content = '''
+Feature: Outline with Attachments
+  Scenario Outline: With table and docstring
+    Given a table:
+      | col   |
+      | {val} |
+    And a doc:
+      """json
+      {"data": "{val}"}
+      """
+
+    Examples:
+      | val |
+      | 100 |
+''';
+      final warnings = <String>[];
+      final sanitized = sanitizeGherkin(content, 'attachments.feature', onWarning: warnings.add);
+
+      expect(warnings, hasLength(1));
+      expect(sanitized, contains('| <val> |'));
+      expect(sanitized, contains('{"data": "<val>"}'));
     });
   });
 }

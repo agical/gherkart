@@ -80,25 +80,47 @@ class ScenarioOutline {
             : 'Example ${rowIndex + 1}';
         final scenarioName = '$name ($exampleName)';
 
-        // Substitute placeholders in steps
+        // Substitute placeholders in steps, data tables, and doc strings
         final expandedSteps = steps.map((step) {
-          var text = step.text;
-          for (final entry in values.entries) {
-            // Support both <placeholder> and {placeholder} syntax
-            text = text.replaceAll('<${entry.key}>', entry.value).replaceAll('{${entry.key}}', entry.value);
-          }
+          final text = _substitute(step.text, values);
+          final dataTable = step.dataTable != null
+              ? DataTable(
+                  headers: step.dataTable!.headers.map((h) => _substitute(h, values)).toList(),
+                  rows: step.dataTable!.rows
+                      .map((row) => row.map((cell) => _substitute(cell, values)).toList())
+                      .toList(),
+                  location: step.dataTable!.location,
+                )
+              : null;
+          final docString = step.docString != null
+              ? DocString(
+                  content: _substitute(step.docString!.content, values),
+                  mediaType: step.docString!.mediaType,
+                  location: step.docString!.location,
+                )
+              : null;
+
           return Step(
             keyword: step.keyword,
             text: text,
             location: step.location,
-            dataTable: step.dataTable,
-            docString: step.docString,
+            dataTable: dataTable,
+            docString: docString,
             originalKeyword: step.originalKeyword,
           );
         }).toList();
 
         result.add(Scenario(name: scenarioName, tags: [...tags, ...exampleTable.tags], steps: expandedSteps));
       }
+    }
+    return result;
+  }
+
+  static String _substitute(String template, Map<String, String> values) {
+    var result = template;
+    for (final entry in values.entries) {
+      // Support both <placeholder> and {placeholder} syntax
+      result = result.replaceAll('<${entry.key}>', entry.value).replaceAll('{${entry.key}}', entry.value);
     }
     return result;
   }
@@ -381,14 +403,7 @@ String sanitizeGherkin(String content, String filePath, {void Function(String me
       }
 
       if (!inExamplesTable) {
-        final isStep =
-            line.startsWith('Given ') ||
-            line.startsWith('When ') ||
-            line.startsWith('Then ') ||
-            line.startsWith('And ') ||
-            line.startsWith('But ') ||
-            line.startsWith('* ');
-        if (isStep) {
+        if (!line.startsWith('@') && !line.startsWith('#') && line.isNotEmpty) {
           outlineStepIndices.add(i);
         }
       }

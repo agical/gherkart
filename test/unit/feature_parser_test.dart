@@ -283,5 +283,104 @@ Feature: Test
 
       expect(files.any((f) => f.contains('nested/')), isTrue);
     });
+
+    test('discoverFeatureFiles delegates to source.list', () async {
+      final source = AssetSource.fromMap({'features/a.feature': 'Feature: A'});
+
+      final files = await discoverFeatureFiles('features', source);
+      expect(files, ['features/a.feature']);
+    });
+
+    test('parseFeatureFile reads and parses feature from source', () async {
+      final source = AssetSource.fromMap({'features/sample.feature': 'Feature: Sample\nScenario: S\nGiven step'});
+
+      final feature = await parseFeatureFile('features/sample.feature', source);
+      expect(feature.name, 'Sample');
+      expect(feature.scenarios, hasLength(1));
+    });
+  });
+
+  group('Feature model helper methods and representations', () {
+    test('handles empty or comment-only content gracefully', () {
+      final feature = parseFeature('# Just a comment\n', 'empty.feature');
+      expect(feature.name, 'Unnamed Feature');
+      expect(feature.scenarios, isEmpty);
+    });
+
+    test('Feature and Scenario toString representations', () {
+      final feature = Feature(
+        name: 'My Feature',
+        filePath: 'test.feature',
+        scenarios: [
+          Scenario(name: 'Scenario 1', steps: []),
+          Scenario(name: 'Scenario 2', steps: []),
+        ],
+        scenarioOutlines: [ScenarioOutline(name: 'Outline 1', steps: [], examples: [])],
+      );
+
+      expect(feature.toString(), 'Feature(My Feature, 2 scenarios, 1 outlines)');
+      expect(feature.scenarios[0].toString(), 'Scenario(Scenario 1, 0 steps)');
+    });
+
+    test('Step.copyWith and Step.toString', () {
+      final step = Step(
+        keyword: StepKeyword.given,
+        text: 'original text',
+        location: SourceLocation(filePath: 'test.feature', line: 10),
+      );
+
+      expect(step.toString(), 'Given original text');
+
+      final copied = step.copyWith(keyword: StepKeyword.when, text: 'updated text');
+
+      expect(copied.keyword, StepKeyword.when);
+      expect(copied.text, 'updated text');
+      expect(copied.location?.line, 10);
+      expect(copied.toString(), 'When updated text');
+    });
+
+    test('DataTable.allRows and DataTable.toString', () {
+      final table = DataTable(
+        headers: ['h1', 'h2'],
+        rows: [
+          ['v1', 'v2'],
+        ],
+      );
+
+      expect(table.toString(), 'DataTable(2 cols, 1 rows)');
+      expect(table.allRows, [
+        ['h1', 'h2'],
+        ['v1', 'v2'],
+      ]);
+    });
+
+    test('DocString.toString representation', () {
+      final docString = DocString(content: 'hello', mediaType: 'json');
+      expect(docString.toString(), 'DocString(json, 5 chars)');
+
+      final defaultDocString = DocString(content: 'text');
+      expect(defaultDocString.toString(), 'DocString(text, 4 chars)');
+    });
+
+    test('ScenarioOutline and ExampleTable toString representations', () {
+      final table = ExampleTable(
+        name: 'Valid',
+        headers: ['a', 'b'],
+        rows: [
+          ['1', '2'],
+        ],
+      );
+      expect(table.toString(), 'ExampleTable(Valid, 2 cols, 1 rows)');
+
+      final unnamedTable = ExampleTable(headers: ['x'], rows: []);
+      expect(unnamedTable.toString(), 'ExampleTable(unnamed, 1 cols, 0 rows)');
+
+      final outline = ScenarioOutline(
+        name: 'Test Outline',
+        steps: [Step(keyword: StepKeyword.given, text: 'step')],
+        examples: [table],
+      );
+      expect(outline.toString(), 'ScenarioOutline(Test Outline, 1 steps, 1 examples)');
+    });
   });
 }
