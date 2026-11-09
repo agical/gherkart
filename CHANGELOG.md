@@ -14,7 +14,8 @@
 - **Multi-language support (i18n)** — parse feature files in 70+ languages supported by Cucumber
   using the standard `# language: <locale>` comment header.
 - **Enhanced Data Table & Doc String support** — supports escaped pipes (`\|`) and empty cells
-  in tables, and both `"""` and ```` ``` ```` delimiters for doc strings.
+  in tables, both `"""` and ```` ``` ```` delimiters for doc strings, and placeholder substitution
+  within step-attached tables and doc strings in Scenario Outlines.
 - **Precise parse diagnostics** — `GherkinParseException` provides line and column coordinates for
   malformed feature files.
 - **Pre-sanitizer with migration diagnostics** — automatically translates legacy syntax
