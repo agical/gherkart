@@ -415,5 +415,32 @@ Feature: Multiple Examples
       expect(expanded[2].steps[0].text, 'value is -1');
       expect(expanded[2].steps[1].text, 'within range is false');
     });
+
+    test('interpolates <param> placeholders in Scenario Outline title and DocString mediaType', () {
+      const content = '''
+Feature: Parameterized Title and MediaType
+  Scenario Outline: Login as <role>
+    Given payload:
+      """<format>
+      role=<role>
+      """
+
+    Examples:
+      | role  | format |
+      | admin | ini    |
+      | guest | yaml   |
+''';
+      final feature = parseFeature(content, 'title_media.feature');
+      final expanded = feature.allScenarios;
+
+      expect(expanded, hasLength(2));
+      expect(expanded[0].name, 'Login as admin (Example 1)');
+      expect(expanded[0].steps.single.docString!.mediaType, 'ini');
+      expect(expanded[0].steps.single.docString!.content, 'role=admin');
+
+      expect(expanded[1].name, 'Login as guest (Example 2)');
+      expect(expanded[1].steps.single.docString!.mediaType, 'yaml');
+      expect(expanded[1].steps.single.docString!.content, 'role=guest');
+    });
   });
 }

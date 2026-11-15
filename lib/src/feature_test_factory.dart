@@ -81,10 +81,15 @@ class FeatureTestFactory<T> {
     final tests = feature.allScenarios.map((scenario) {
       // Merge feature tags with scenario tags (deduplicated via Set)
       final mergedTags = {...feature.tags, ...scenario.tags}.toList();
-      return TestCase(name: scenario.name, steps: scenario.steps, tags: mergedTags);
+      return TestCase(name: scenario.name, steps: scenario.steps, tags: mergedTags, scenario: scenario);
     }).toList();
 
-    return TestGroup(name: feature.name, tests: tests, backgroundSteps: feature.background?.steps ?? []);
+    return TestGroup(
+      name: feature.name,
+      tests: tests,
+      backgroundSteps: feature.background?.steps ?? [],
+      feature: feature,
+    );
   }
 
   String _getRelativePath(String filePath) {
@@ -161,8 +166,15 @@ class TestGroup {
   final List<TestCase> tests;
   final List<TestGroup> children;
   final List<Step> backgroundSteps;
+  final Feature? feature;
 
-  TestGroup({required this.name, this.tests = const [], this.children = const [], this.backgroundSteps = const []});
+  TestGroup({
+    required this.name,
+    this.tests = const [],
+    this.children = const [],
+    this.backgroundSteps = const [],
+    this.feature,
+  });
 
   int get totalTests => tests.length + children.fold(0, (sum, c) => sum + c.totalTests);
 }
@@ -172,8 +184,9 @@ class TestCase {
   final String name;
   final List<Step> steps;
   final List<String> tags;
+  final Scenario? scenario;
 
-  TestCase({required this.name, required this.steps, this.tags = const []});
+  TestCase({required this.name, required this.steps, this.tags = const [], this.scenario});
 }
 
 /// Thrown when feature files reference steps that aren't registered.

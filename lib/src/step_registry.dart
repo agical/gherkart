@@ -97,6 +97,29 @@ class StepMatch<T> {
   }
 }
 
+/// Type-erased interface allowing reporters (such as `NdjsonReporter`) to
+/// inspect registered step definitions and matched argument offsets regardless
+/// of the registry's context type parameter `T`.
+abstract interface class StepDefinitionProvider {
+  /// Number of registered step definitions.
+  int get stepCount;
+
+  /// Pattern source string for the step definition at [index], if available.
+  String? patternAt(int index);
+
+  /// Matches [line] against registered step definitions and returns the matched
+  /// definition index and argument offsets, or `null` if unmatched.
+  StepDefinitionMatchInfo? matchStepDefinition(String line);
+}
+
+/// Information about a step definition match for Cucumber Messages reporting.
+class StepDefinitionMatchInfo {
+  final int definitionIndex;
+  final List<MatchedArgumentInfo> arguments;
+
+  const StepDefinitionMatchInfo({required this.definitionIndex, this.arguments = const []});
+}
+
 /// Registry for mapping step patterns to their implementations.
 ///
 /// Example:
@@ -116,7 +139,7 @@ class StepMatch<T> {
 ///   },
 /// });
 /// ```
-class StepRegistry<T> {
+class StepRegistry<T> implements StepDefinitionProvider {
   final List<_StepEntry<T>> _entries = [];
 
   /// Creates an empty registry.
@@ -150,7 +173,29 @@ class StepRegistry<T> {
   }
 
   /// Returns the number of registered steps.
+  @override
   int get stepCount => _entries.length;
+
+  @override
+  String? patternAt(int index) {
+    if (index < 0 || index >= _entries.length) return null;
+    final meta = lineMapperMetadata[_entries[index].mapper];
+    return meta?.expressionSource;
+  }
+
+  @override
+  StepDefinitionMatchInfo? matchStepDefinition(String line) {
+    for (var i = 0; i < _entries.length; i++) {
+      final mapper = _entries[i].mapper;
+      final params = mapper(line);
+      if (params != null) {
+        final meta = lineMapperMetadata[mapper];
+        final args = meta?.matchArguments(line) ?? const <MatchedArgumentInfo>[];
+        return StepDefinitionMatchInfo(definitionIndex: i, arguments: args);
+      }
+    }
+    return null;
+  }
 
   /// Creates a new registry combining this one with another.
   ///

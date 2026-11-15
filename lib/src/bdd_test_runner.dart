@@ -140,6 +140,13 @@ class BddTestRunner<T> {
   /// Optional reporter for collecting and outputting test results.
   final BddReporter? reporter;
 
+  /// Whether to validate that all steps in a scenario are registered before
+  /// executing any step in that scenario.
+  ///
+  /// Defaults to `true` so missing steps are reported upfront with locations.
+  /// Set to `false` to execute steps sequentially until an undefined step is reached.
+  final bool checkMissingStepsUpfront;
+
   // Cache for features (loaded in setUpAll)
   List<Feature>? _features;
   TestPlan? _plan;
@@ -157,6 +164,7 @@ class BddTestRunner<T> {
     this.hooks = const BddHooks(),
     this.schemeResolver,
     this.reporter,
+    this.checkMissingStepsUpfront = true,
   });
 
   /// Single root path convenience constructor.
@@ -235,7 +243,21 @@ class BddTestRunner<T> {
     _plan = factory.buildTestPlan(_features!);
   }
 
+  void _attachRegistryToReporter(BddReporter? rep) {
+    if (rep is NdjsonReporter) {
+      rep.attachRegistry(registry);
+    } else if (rep is NdjsonFileReporter) {
+      rep.attachRegistry(registry);
+    } else if (rep is CompositeReporter) {
+      for (final child in rep.reporters) {
+        _attachRegistryToReporter(child);
+      }
+    }
+  }
+
   void _runTestPlan(TestPlan plan) {
+    _attachRegistryToReporter(reporter);
+
     if (hooks.beforeAll != null) {
       adapter.setUpAll(() async {
         await hooks.beforeAll!();
@@ -255,32 +277,35 @@ class BddTestRunner<T> {
 
     for (var i = 0; i < plan.groups.length; i++) {
       final testGroup = plan.groups[i];
-      final feature = _features != null && i < _features!.length ? _features![i] : null;
+      final feature = testGroup.feature ?? (_features != null && i < _features!.length ? _features![i] : null);
       _runGroup(testGroup, feature: feature);
     }
   }
 
   void _runGroup(TestGroup testGroup, {Feature? feature}) {
+    final resolvedFeature = testGroup.feature ?? feature;
+
     adapter.group(testGroup.name, () {
       output.printFeature(testGroup.name);
 
-      // Only report feature start for leaf groups (those with tests, not folder groups)
+      // Only report feature start for leaf groups (those representing a feature, not folder groups)
       ReportFeature? reportFeature;
-      final isFeatureGroup = testGroup.tests.isNotEmpty;
-      if (isFeatureGroup && feature != null && reporter != null) {
+      final isFeatureGroup = testGroup.children.isEmpty && (testGroup.tests.isNotEmpty || resolvedFeature != null);
+      if (isFeatureGroup && resolvedFeature != null && reporter != null) {
         reportFeature = ReportFeature(
-          name: feature.name,
-          path: feature.filePath,
-          tags: feature.tags,
-          sourceScenarios: feature.allScenarios,
+          name: resolvedFeature.name,
+          path: resolvedFeature.filePath,
+          tags: resolvedFeature.tags,
+          sourceScenarios: resolvedFeature.allScenarios,
+          sourceFeature: resolvedFeature,
         );
         reporter!.onFeatureStart(reportFeature);
       }
 
       // Run child groups (these are feature groups within a folder)
-      // Find matching features for children by name
       for (final child in testGroup.children) {
-        final childFeature = _features?.firstWhere((f) => f.name == child.name, orElse: () => feature!);
+        final childFeature =
+            child.feature ?? _features?.firstWhere((f) => f.name == child.name, orElse: () => resolvedFeature!);
         _runGroup(child, feature: childFeature);
       }
 
@@ -298,6 +323,9 @@ class BddTestRunner<T> {
     // Check for @wip tag to skip work-in-progress tests (unless RUN_WIP=true)
     final shouldSkip = testCase.tags.contains('wip') && !_runWip;
 
+    // Per Gherkin Pickle compilation rules, empty scenarios do not inherit background steps.
+    final effectiveBackgroundSteps = testCase.steps.isEmpty ? const <Step>[] : backgroundSteps;
+
     adapter.testFunction(
       testCase.name,
       tags: testCase.tags.isNotEmpty ? testCase.tags : null,
@@ -307,36 +335,54 @@ class BddTestRunner<T> {
 
         // Report scenario start
         if (reporter != null) {
-          _currentScenario = ReportScenario(name: testCase.name, tags: testCase.tags, featurePath: reportFeature?.path);
+          _currentScenario = ReportScenario(
+            name: testCase.name,
+            tags: testCase.tags,
+            featurePath: reportFeature?.path,
+            pickle: testCase.scenario?.pickle,
+          );
           reporter!.onScenarioStart(_currentScenario!);
         }
 
-        // Check all steps upfront and report all missing at once
-        final allSteps = [...backgroundSteps, ...testCase.steps];
-        final missingSteps = <Step>[];
-        for (final step in allSteps) {
-          if (registry.match(step.text) == null) {
-            missingSteps.add(step);
+        if (checkMissingStepsUpfront) {
+          // Check all steps upfront and report all missing at once
+          final allSteps = [...effectiveBackgroundSteps, ...testCase.steps];
+          final missingSteps = <Step>[];
+          for (final step in allSteps) {
+            if (registry.match(step.text) == null) {
+              missingSteps.add(step);
+            }
           }
-        }
-        if (missingSteps.isNotEmpty) {
-          final errorLines = missingSteps
-              .map((s) {
-                final loc = s.location != null ? '${s.location}: ' : '';
-                return '  - $loc${s.fullText}';
-              })
-              .join('\n');
-          adapter.fail('${missingSteps.length} missing step(s):\n$errorLines');
+          if (missingSteps.isNotEmpty) {
+            final errorLines = missingSteps
+                .map((s) {
+                  final loc = s.location != null ? '${s.location}: ' : '';
+                  return '  - $loc${s.fullText}';
+                })
+                .join('\n');
+            var failedUpfront = false;
+            try {
+              adapter.fail('${missingSteps.length} missing step(s):\n$errorLines');
+            } catch (e) {
+              failedUpfront = true;
+              rethrow;
+            } finally {
+              if (failedUpfront && reporter != null && _currentScenario != null) {
+                reporter!.onScenarioComplete(_currentScenario!, ScenarioResult.failed('Missing steps'));
+              }
+            }
+          }
         }
 
         var success = true;
+        var skipped = false;
         try {
           if (hooks.beforeEach != null) {
             await hooks.beforeEach!(testCase.name, testCase.tags);
           }
 
           // Run background steps first
-          for (final step in backgroundSteps) {
+          for (final step in effectiveBackgroundSteps) {
             await _runStep(context, step);
           }
 
@@ -344,13 +390,17 @@ class BddTestRunner<T> {
           for (final step in testCase.steps) {
             await _runStep(context, step);
           }
+        } on SkipScenarioException {
+          skipped = true;
         } catch (e) {
           success = false;
           rethrow;
         } finally {
           // Report scenario end
           if (reporter != null && _currentScenario != null) {
-            final result = success ? ScenarioResult.passed() : ScenarioResult.failed('Scenario failed');
+            final result = skipped
+                ? ScenarioResult.skipped()
+                : (success ? ScenarioResult.passed() : ScenarioResult.failed('Scenario failed'));
             reporter!.onScenarioComplete(_currentScenario!, result);
           }
           if (hooks.afterEach != null) {
@@ -379,13 +429,18 @@ class BddTestRunner<T> {
       reporter!.onStepStart(reportStep);
     }
 
-    try {
-      final match = registry.match(step.text);
-      if (match == null) {
-        output.printStepFailed(keyword, step.text);
-        adapter.fail('Step not found: ${step.fullText}$locationInfo');
+    final match = registry.match(step.text);
+    if (match == null) {
+      stopwatch.stop();
+      output.printStepFailed(keyword, step.text);
+      if (reporter != null) {
+        reporter!.onStepComplete(reportStep, StepResult.undefined('Step not found: ${step.fullText}$locationInfo'));
       }
+      final locPrefix = step.location != null ? '${step.location}: ' : '';
+      adapter.fail('1 missing step(s):\n  - $locPrefix${step.fullText}');
+    }
 
+    try {
       // Resolve parameter schemes if resolver is configured
       if (schemeResolver != null) {
         final resolved = await schemeResolver!.resolveAll(match.params);
@@ -409,13 +464,19 @@ class BddTestRunner<T> {
         final result = StepResult.passed(stopwatch.elapsed);
         reporter!.onStepComplete(reportStep, result);
       }
-    } catch (e) {
+    } on SkipScenarioException {
+      stopwatch.stop();
+      if (reporter != null) {
+        reporter!.onStepComplete(reportStep, StepResult.skipped(stopwatch.elapsed));
+      }
+      rethrow;
+    } catch (e, stackTrace) {
       output.printStepFailed(keyword, step.text);
 
       // Report step failed
       if (reporter != null) {
         stopwatch.stop();
-        final result = StepResult.failed(stopwatch.elapsed, e.toString());
+        final result = StepResult.failed(stopwatch.elapsed, e.toString(), exception: e, stackTrace: stackTrace);
         reporter!.onStepComplete(reportStep, result);
       }
 
@@ -449,6 +510,7 @@ Future<void> runBddTests<T>({
   BddHooks<T> hooks = const BddHooks(),
   SchemeResolver? schemeResolver,
   BddReporter? reporter,
+  bool checkMissingStepsUpfront = true,
 }) {
   return BddTestRunner<T>(
     rootPaths: rootPaths,
@@ -460,5 +522,6 @@ Future<void> runBddTests<T>({
     hooks: hooks,
     schemeResolver: schemeResolver,
     reporter: reporter,
+    checkMissingStepsUpfront: checkMissingStepsUpfront,
   ).run();
 }

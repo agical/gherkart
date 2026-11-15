@@ -72,6 +72,25 @@ Feature: Home Page
         expect(feature.description, contains('I want to see'));
         expect(feature.description, contains('So that'));
       });
+
+      test('preserves multi-paragraph feature descriptions beyond the first paragraph', () {
+        const content = '''
+Feature: Multi-paragraph Description
+  First paragraph line one.
+  First paragraph line two.
+
+  Second paragraph after blank line.
+
+  Scenario: Test
+    Given something
+''';
+        final feature = parseFeature(content, 'test.feature');
+
+        expect(
+          feature.description,
+          'First paragraph line one.\nFirst paragraph line two.\n\nSecond paragraph after blank line.',
+        );
+      });
     });
 
     group('Background parsing', () {

@@ -23,6 +23,7 @@ Parse Gherkin `.feature` files at runtime — no code generation required.
 | Doc Strings | Multi-line text blocks with triple double-quotes (`"""`) or backticks (```` ``` ````) |
 | Tags | `@smoke`, `@wip`, `@slow` etc. with feature/rule → scenario inheritance |
 | Parse diagnostics | Real line and column error reporting via `GherkinParseException` |
+| Cucumber Messages (NDJSON) | Standard `NdjsonReporter` & `NdjsonFileReporter` compatible with Cucumber HTML/JSON/JUnit formatters |
 | Missing step detection | Reports unregistered steps with source locations |
 
 ### Gherkart Improvements
@@ -37,7 +38,7 @@ Parse Gherkin `.feature` files at runtime — no code generation required.
 | Scheme resolution | `{t:translationKey}` parameter schemes for i18n and key lookup |
 | Translation handlers | ARB file, map, or function-based lookup with parameterized values |
 | Configurable output | Silent → scenario names → steps → verbose with timing |
-| Reporting system | `SummaryReporter`, `BufferedReporter`, `MarkdownFileReporter`, composable |
+| Reporting system | `SummaryReporter`, `BufferedReporter`, `MarkdownFileReporter`, `NdjsonReporter`, composable |
 | Test structure | Tree (nested by directory) or flat grouping |
 | Lifecycle hooks | `beforeAll`, `afterAll`, `beforeEach`, `afterEach` with tag access |
 
@@ -676,6 +677,39 @@ Reporters collect structured results from test execution for post-processing.
 | `SummaryReporter`      | Prints pass/fail/skip counts                     |
 | `CompositeReporter`    | Combines multiple reporters                      |
 | `MarkdownFileReporter` | Writes per-feature Markdown files with results   |
+| `NdjsonReporter`       | Emits Cucumber Messages NDJSON to sink/callbacks (web & `FakeAsync`-safe) |
+| `NdjsonFileReporter`   | Writes Cucumber Messages `.ndjson` file to disk  |
+
+### Cucumber Messages (NDJSON) Reporting
+
+Emit standard [Cucumber Messages](https://github.com/cucumber/messages) envelopes as Newline-Delimited JSON (NDJSON) to integrate with official Cucumber HTML, JSON, and JUnit formatters:
+
+```dart
+final reporter = NdjsonFileReporter(
+  outputPath: 'build/reports/cucumber-messages.ndjson',
+);
+
+await runBddTests<PatrolTester>(
+  // ...
+  reporter: reporter,
+);
+```
+
+For widget tests (`FakeAsync`) or web environments without `dart:io`, use `NdjsonReporter` with an in-memory `StringSink` or `onEnvelope` callback:
+
+```dart
+final buffer = StringBuffer();
+final reporter = NdjsonReporter(sink: buffer);
+```
+
+You can combine `MarkdownFileReporter` and `NdjsonFileReporter` in a single run via `CompositeReporter`:
+
+```dart
+final reporter = CompositeReporter([
+  MarkdownFileReporter(outputDir: 'build/docs/features'),
+  NdjsonFileReporter(outputPath: 'build/reports/cucumber-messages.ndjson'),
+]);
+```
 
 ### Markdown Report Generation
 
@@ -745,15 +779,21 @@ await runBddTests<PatrolTester>(
 | `TestPlan`          | Organized test groups ready for execution        |
 | `FeatureTestFactory` | Builds test plans from parsed features          |
 | `MarkdownFileReporter` | Generates Markdown docs from test results     |
+| `NdjsonReporter`    | Emits Cucumber Messages NDJSON to sink/callbacks |
+| `NdjsonFileReporter` | Writes Cucumber Messages `.ndjson` file to disk |
+| `SkipScenarioException` | Dynamically skips a scenario from inside a step |
 
 ## Development
 
 ```bash
-# Run all tests (unit + examples)
+# Run all tests (unit + compliance + examples)
 just test-all
 
 # Run unit tests only
 just test-unit
+
+# Run official Cucumber Gherkin & CCK compliance suites
+just test-compliance
 
 # Run all examples
 just test-example

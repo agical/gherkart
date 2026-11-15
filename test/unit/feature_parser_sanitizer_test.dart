@@ -183,5 +183,49 @@ Feature: Outline with Attachments
       expect(sanitized, contains('| <val> |'));
       expect(sanitized, contains('{"data": "<val>"}'));
     });
+
+    test('does not touch import statements or triple single-quotes inside standard DocStrings', () {
+      const content = """
+Feature: Code Snippet in DocString
+  Scenario: Dart snippet
+    Given the Dart file:
+      \"\"\"dart
+      import 'dart:io';
+      final s = '''raw multiline''';
+      \"\"\"
+    Then it compiles
+""";
+      final warnings = <String>[];
+      final sanitized = sanitizeGherkin(content, 'snippet.feature', onWarning: warnings.add);
+
+      expect(warnings, isEmpty);
+      expect(sanitized, equals(content));
+
+      final feature = parseFeature(content, 'snippet.feature', onWarning: warnings.add);
+      expect(warnings, isEmpty);
+      expect(feature.scenarios.single.steps.first.docString!.content, contains("import 'dart:io';"));
+      expect(feature.scenarios.single.steps.first.docString!.content, contains("'''raw multiline'''"));
+    });
+
+    test('resets outline context when followed by Example: keyword', () {
+      const content = '''
+Feature: Outline followed by Example
+  Scenario Outline: Outline first
+    Given value is {x}
+
+    Examples:
+      | x |
+      | 1 |
+
+  Example: Regular example after outline
+    Given literal {x} stays untouched
+''';
+      final warnings = <String>[];
+      final sanitized = sanitizeGherkin(content, 'example_after.feature', onWarning: warnings.add);
+
+      expect(warnings, hasLength(1));
+      expect(sanitized, contains('Given value is <x>'));
+      expect(sanitized, contains('Given literal {x} stays untouched'));
+    });
   });
 }

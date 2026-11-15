@@ -19,3 +19,5 @@
 library;
 
 export 'src/feature_source_io.dart' show FileSystemSource;
+export 'src/markdown_file_reporter.dart' show MarkdownFileReporter;
+export 'src/ndjson_file_reporter.dart' show NdjsonFileReporter;

@@ -13,6 +13,12 @@ class Feature {
   final List<Scenario> scenarios;
   final List<ScenarioOutline> scenarioOutlines;
 
+  /// Raw Cucumber Messages envelopes (`Source`, `GherkinDocument`, `Pickle`s)
+  /// emitted by `cucumber_gherkin` when parsed via [parseFeature].
+  final List<cm.Envelope> gherkinEnvelopes;
+
+  final List<Object>? _orderedScenarioItems;
+
   Feature({
     required this.name,
     required this.filePath,
@@ -21,13 +27,21 @@ class Feature {
     this.background,
     required this.scenarios,
     this.scenarioOutlines = const [],
-  });
+    this.gherkinEnvelopes = const [],
+    List<Object>? orderedScenarioItems,
+  }) : _orderedScenarioItems = orderedScenarioItems;
 
-  /// Returns all scenarios including expanded scenario outlines.
-  List<Scenario> get allScenarios => [
-    ...scenarios,
-    for (final outline in scenarioOutlines) ...outline.expandToScenarios(),
-  ];
+  /// Returns all scenarios including expanded scenario outlines in document order.
+  List<Scenario> get allScenarios {
+    final ordered = _orderedScenarioItems;
+    if (ordered != null) {
+      return [
+        for (final item in ordered)
+          if (item is Scenario) item else if (item is ScenarioOutline) ...item.expandToScenarios(),
+      ];
+    }
+    return [...scenarios, for (final outline in scenarioOutlines) ...outline.expandToScenarios()];
+  }
 
   @override
   String toString() => 'Feature($name, ${scenarios.length} scenarios, ${scenarioOutlines.length} outlines)';
@@ -46,7 +60,10 @@ class Scenario {
   final List<String> tags;
   final List<Step> steps;
 
-  Scenario({required this.name, this.tags = const [], required this.steps});
+  /// Compiled Cucumber [cm.Pickle] associated with this scenario, if parsed via [parseFeature].
+  final cm.Pickle? pickle;
+
+  Scenario({required this.name, this.tags = const [], required this.steps, this.pickle});
 
   @override
   String toString() => 'Scenario($name, ${steps.length} steps)';
@@ -72,30 +89,33 @@ class ScenarioOutline {
     for (final exampleTable in examples) {
       for (var rowIndex = 0; rowIndex < exampleTable.rows.length; rowIndex++) {
         final row = exampleTable.rows[rowIndex];
-        final values = Map.fromIterables(exampleTable.headers, row);
+        final headers = exampleTable.headers;
 
-        // Generate scenario name
+        // Generate scenario name (interpolating any <param> in outline title)
+        final interpolatedTitle = _substituteCells(name, headers, row);
         final exampleName = exampleTable.name != null
             ? '${exampleTable.name} #${rowIndex + 1}'
             : 'Example ${rowIndex + 1}';
-        final scenarioName = '$name ($exampleName)';
+        final scenarioName = '$interpolatedTitle ($exampleName)';
 
-        // Substitute placeholders in steps, data tables, and doc strings
+        // Substitute placeholders in steps, data tables, and doc strings (including mediaType)
         final expandedSteps = steps.map((step) {
-          final text = _substitute(step.text, values);
+          final text = _substituteCells(step.text, headers, row);
           final dataTable = step.dataTable != null
               ? DataTable(
-                  headers: step.dataTable!.headers.map((h) => _substitute(h, values)).toList(),
+                  headers: step.dataTable!.headers.map((h) => _substituteCells(h, headers, row)).toList(),
                   rows: step.dataTable!.rows
-                      .map((row) => row.map((cell) => _substitute(cell, values)).toList())
+                      .map((r) => r.map((cell) => _substituteCells(cell, headers, row)).toList())
                       .toList(),
                   location: step.dataTable!.location,
                 )
               : null;
           final docString = step.docString != null
               ? DocString(
-                  content: _substitute(step.docString!.content, values),
-                  mediaType: step.docString!.mediaType,
+                  content: _substituteCells(step.docString!.content, headers, row),
+                  mediaType: step.docString!.mediaType != null
+                      ? _substituteCells(step.docString!.mediaType!, headers, row)
+                      : null,
                   location: step.docString!.location,
                 )
               : null;
@@ -110,17 +130,27 @@ class ScenarioOutline {
           );
         }).toList();
 
-        result.add(Scenario(name: scenarioName, tags: [...tags, ...exampleTable.tags], steps: expandedSteps));
+        final rowPickle = rowIndex < exampleTable.rowPickles.length ? exampleTable.rowPickles[rowIndex] : null;
+
+        result.add(
+          Scenario(name: scenarioName, tags: [...tags, ...exampleTable.tags], steps: expandedSteps, pickle: rowPickle),
+        );
       }
     }
     return result;
   }
 
-  static String _substitute(String template, Map<String, String> values) {
+  static String _substituteCells(String template, List<String> headers, List<String> row) {
+    if (!template.contains('<') && !template.contains('{')) {
+      return template;
+    }
     var result = template;
-    for (final entry in values.entries) {
+    final len = headers.length < row.length ? headers.length : row.length;
+    for (var i = 0; i < len; i++) {
+      final key = headers[i];
+      final val = row[i];
       // Support both <placeholder> and {placeholder} syntax
-      result = result.replaceAll('<${entry.key}>', entry.value).replaceAll('{${entry.key}}', entry.value);
+      result = result.replaceAll('<$key>', val).replaceAll('{$key}', val);
     }
     return result;
   }
@@ -136,8 +166,16 @@ class ExampleTable {
   final List<String> headers;
   final List<List<String>> rows;
   final SourceLocation? location;
+  final List<cm.Pickle?> rowPickles;
 
-  ExampleTable({this.name, this.tags = const [], required this.headers, required this.rows, this.location});
+  ExampleTable({
+    this.name,
+    this.tags = const [],
+    required this.headers,
+    required this.rows,
+    this.location,
+    this.rowPickles = const [],
+  });
 
   /// Converts rows to list of maps for easy access.
   List<Map<String, String>> toMaps() => rows.map((row) => Map.fromIterables(headers, row)).toList();
@@ -266,8 +304,9 @@ class GherkinParseException implements Exception {
   final String filePath;
   final int? line;
   final int? column;
+  final List<cm.ParseError> parseErrors;
 
-  GherkinParseException(this.message, {required this.filePath, this.line, this.column});
+  GherkinParseException(this.message, {required this.filePath, this.line, this.column, this.parseErrors = const []});
 
   @override
   String toString() {
@@ -287,26 +326,48 @@ class GherkinParseException implements Exception {
 String sanitizeGherkin(String content, String filePath, {void Function(String message)? onWarning}) {
   final warn = onWarning ?? print;
   final lines = content.split('\n');
+  var modified = false;
 
-  // 1. Process legacy imports and triple-single-quote docstrings line by line
+  // 1. Process legacy top-of-file imports and triple-single-quote docstrings,
+  //    properly respecting active docstring blocks so content inside """ or ```
+  //    is never altered.
+  var activeDocDelimiter = '';
+  var beforeFeature = true;
+
   for (var i = 0; i < lines.length; i++) {
     final rawLine = lines[i];
     final trimmed = rawLine.trim();
     final lineNum = i + 1;
 
-    // Check for legacy import
-    if (trimmed.startsWith('import ')) {
-      warn(
-        '[gherkart] Deprecation: Found unused Dart import in .feature file at $filePath:$lineNum.\n'
-        'gherkart parses at runtime and does not need imports in feature files.\n'
-        'Remove with:\n'
-        "  sed -i '' '/^import /d' $filePath",
-      );
-      lines[i] = '# $rawLine';
+    if (activeDocDelimiter.isNotEmpty) {
+      if (trimmed.startsWith(activeDocDelimiter)) {
+        if (activeDocDelimiter == "'''") {
+          warn(
+            '[gherkart] Deprecation: Found triple single-quote docstring (\'\'\') at $filePath:$lineNum.\n'
+            'Standard Gherkin requires triple double-quotes (""") or backticks (```).\n'
+            'Fix with:\n'
+            '  sed -i \'\' "s/\'\'\'/\\"\\"\\"/g" $filePath',
+          );
+          lines[i] = rawLine.replaceFirst("'''", '"""');
+          modified = true;
+        }
+        activeDocDelimiter = '';
+      }
       continue;
     }
 
-    // Check for legacy triple single-quote docstring delimiter
+    if (trimmed.startsWith('"""')) {
+      activeDocDelimiter = '"""';
+      beforeFeature = false;
+      continue;
+    }
+
+    if (trimmed.startsWith('```')) {
+      activeDocDelimiter = '```';
+      beforeFeature = false;
+      continue;
+    }
+
     if (trimmed.startsWith("'''")) {
       warn(
         '[gherkart] Deprecation: Found triple single-quote docstring (\'\'\') at $filePath:$lineNum.\n'
@@ -315,14 +376,41 @@ String sanitizeGherkin(String content, String filePath, {void Function(String me
         '  sed -i \'\' "s/\'\'\'/\\"\\"\\"/g" $filePath',
       );
       lines[i] = rawLine.replaceFirst("'''", '"""');
+      activeDocDelimiter = "'''";
+      beforeFeature = false;
+      modified = true;
+      continue;
+    }
+
+    // Check for legacy Dart import at the top of the file (before Feature:)
+    if (beforeFeature && trimmed.startsWith('import ')) {
+      warn(
+        '[gherkart] Deprecation: Found unused Dart import in .feature file at $filePath:$lineNum.\n'
+        'gherkart parses at runtime and does not need imports in feature files.\n'
+        'Remove with:\n'
+        "  sed -i '' '/^import /d' $filePath",
+      );
+      if (rawLine.endsWith('\r')) {
+        lines[i] = '# ${rawLine.substring(0, rawLine.length - 1)}\r';
+      } else {
+        lines[i] = '# $rawLine';
+      }
+      modified = true;
+      continue;
+    }
+
+    if (trimmed.isNotEmpty && !trimmed.startsWith('#') && !trimmed.startsWith('@')) {
+      beforeFeature = false;
     }
   }
 
   // 2. Process Scenario Outline {header} placeholders
-  var inOutline = false;
+  var inScenarioBlock = false;
+  var inExamplesSection = false;
+  var awaitingExampleHeader = false;
+  var docDelimiter = '';
   var outlineStepIndices = <int>[];
   var outlineHeaders = <String>{};
-  var inExamplesTable = false;
 
   void flushOutline() {
     if (outlineHeaders.isNotEmpty && outlineStepIndices.isNotEmpty) {
@@ -340,6 +428,7 @@ String sanitizeGherkin(String content, String filePath, {void Function(String me
             foundPlaceholders.add(m.group(1)!);
           }
           lines[stepIdx] = line.replaceAllMapped(placeholderRegex, (m) => '<${m.group(1)}>');
+          modified = true;
         }
       }
 
@@ -358,76 +447,108 @@ String sanitizeGherkin(String content, String filePath, {void Function(String me
     }
     outlineStepIndices = [];
     outlineHeaders = {};
-    inExamplesTable = false;
+    inExamplesSection = false;
+    awaitingExampleHeader = false;
   }
 
   for (var i = 0; i < lines.length; i++) {
     final line = lines[i].trim();
 
-    if (line.startsWith('Scenario Outline:') || line.startsWith('Scenario Template:')) {
-      if (inOutline) {
+    if (docDelimiter.isNotEmpty) {
+      if (line.startsWith(docDelimiter)) {
+        docDelimiter = '';
+      } else if (inScenarioBlock && !inExamplesSection) {
+        outlineStepIndices.add(i);
+      }
+      continue;
+    }
+
+    if (line.startsWith('"""')) {
+      docDelimiter = '"""';
+      if (inScenarioBlock && !inExamplesSection) {
+        outlineStepIndices.add(i);
+      }
+      continue;
+    }
+
+    if (line.startsWith('```')) {
+      docDelimiter = '```';
+      if (inScenarioBlock && !inExamplesSection) {
+        outlineStepIndices.add(i);
+      }
+      continue;
+    }
+
+    if (line.startsWith('Scenario Outline:') ||
+        line.startsWith('Scenario Template:') ||
+        line.startsWith('Scenario:') ||
+        line.startsWith('Example:')) {
+      if (inScenarioBlock) {
         flushOutline();
       }
-      inOutline = true;
-      inExamplesTable = false;
+      inScenarioBlock = true;
+      inExamplesSection = false;
+      awaitingExampleHeader = false;
       outlineStepIndices = [];
       outlineHeaders = {};
       continue;
     }
 
-    if (inOutline) {
-      if (line.startsWith('Scenario:') ||
-          line.startsWith('Rule:') ||
-          line.startsWith('Feature:') ||
-          line.startsWith('Background:')) {
+    if (inScenarioBlock) {
+      if (line.startsWith('Rule:') || line.startsWith('Feature:') || line.startsWith('Background:')) {
         flushOutline();
-        inOutline = false;
+        inScenarioBlock = false;
         continue;
       }
 
       if (line.startsWith('Examples:') || line.startsWith('Scenarios:')) {
-        inExamplesTable = true;
+        inExamplesSection = true;
+        awaitingExampleHeader = true;
         continue;
       }
 
-      if (inExamplesTable) {
-        if (line.startsWith('@') || line.startsWith('#') || line.isEmpty) {
-          continue;
-        }
-        if (line.startsWith('|')) {
+      if (inExamplesSection) {
+        if (line.startsWith('|') && awaitingExampleHeader) {
           final cells = line.split('|').map((c) => c.trim()).where((c) => c.isNotEmpty).toList();
           outlineHeaders.addAll(cells);
-          inExamplesTable = false;
-          continue;
+          awaitingExampleHeader = false;
         }
+        continue;
       }
 
-      if (!inExamplesTable) {
-        if (!line.startsWith('@') && !line.startsWith('#') && line.isNotEmpty) {
-          outlineStepIndices.add(i);
-        }
+      if (!line.startsWith('@') && !line.startsWith('#') && line.isNotEmpty) {
+        outlineStepIndices.add(i);
       }
     }
   }
 
-  if (inOutline) {
+  if (inScenarioBlock) {
     flushOutline();
   }
 
+  if (!modified) {
+    return content;
+  }
   return lines.join('\n');
 }
 
 /// Parses a Gherkin feature file content into a [Feature] object.
-Feature parseFeature(String content, String filePath, {void Function(String message)? onWarning}) {
+Feature parseFeature(
+  String content,
+  String filePath, {
+  void Function(String message)? onWarning,
+  String Function()? idGenerator,
+}) {
   final sanitized = sanitizeGherkin(content, filePath, onWarning: onWarning);
   final messages = generateMessages(
     sanitized,
     filePath,
-    const GherkinOptions(includeSource: true, includeGherkinDocument: true, includePickles: true),
+    GherkinOptions(includeSource: true, includeGherkinDocument: true, includePickles: true, idGenerator: idGenerator),
   );
 
   final parseErrors = <cm.ParseError>[];
   cm.GherkinDocument? document;
+  final picklesByAstKey = <String, cm.Pickle>{};
 
   for (final envelope in messages) {
     if (envelope.parseError != null) {
@@ -435,6 +556,10 @@ Feature parseFeature(String content, String filePath, {void Function(String mess
     }
     if (envelope.gherkinDocument != null) {
       document = envelope.gherkinDocument;
+    }
+    if (envelope.pickle != null) {
+      final pickle = envelope.pickle!;
+      picklesByAstKey[pickle.astNodeIds.join(':')] = pickle;
     }
   }
 
@@ -445,24 +570,39 @@ Feature parseFeature(String content, String filePath, {void Function(String mess
       filePath: filePath,
       line: first.source.location?.line,
       column: first.source.location?.column,
+      parseErrors: parseErrors,
     );
   }
 
   final f = document?.feature;
   if (f == null) {
-    return Feature(name: 'Unnamed Feature', filePath: filePath, scenarios: []);
+    return Feature(
+      name: 'Unnamed Feature',
+      filePath: filePath,
+      scenarios: [],
+      gherkinEnvelopes: messages,
+      orderedScenarioItems: const [],
+    );
   }
 
   Background? background;
   final scenarios = <Scenario>[];
   final scenarioOutlines = <ScenarioOutline>[];
+  final orderedScenarioItems = <Object>[];
 
   for (final child in f.children) {
     if (child.background != null) {
       background = _convertBackground(child.background!, filePath);
     }
     if (child.scenario != null) {
-      _addScenarioOrOutline(child.scenario!, filePath, scenarios, scenarioOutlines);
+      _addScenarioOrOutline(
+        child.scenario!,
+        filePath,
+        scenarios,
+        scenarioOutlines,
+        orderedScenarioItems,
+        picklesByAstKey,
+      );
     }
     if (child.rule != null) {
       final rule = child.rule!;
@@ -478,6 +618,8 @@ Feature parseFeature(String content, String filePath, {void Function(String mess
             filePath,
             scenarios,
             scenarioOutlines,
+            orderedScenarioItems,
+            picklesByAstKey,
             ruleTags: ruleTags,
             extraBackground: ruleBackground,
           );
@@ -494,6 +636,8 @@ Feature parseFeature(String content, String filePath, {void Function(String mess
     background: background,
     scenarios: scenarios,
     scenarioOutlines: scenarioOutlines,
+    gherkinEnvelopes: messages,
+    orderedScenarioItems: orderedScenarioItems,
   );
 }
 
@@ -501,7 +645,9 @@ void _addScenarioOrOutline(
   cm.Scenario sc,
   String filePath,
   List<Scenario> scenarios,
-  List<ScenarioOutline> scenarioOutlines, {
+  List<ScenarioOutline> scenarioOutlines,
+  List<Object> orderedScenarioItems,
+  Map<String, cm.Pickle> picklesByAstKey, {
   List<String> ruleTags = const [],
   Background? extraBackground,
 }) {
@@ -509,24 +655,31 @@ void _addScenarioOrOutline(
 
   final extraSteps = extraBackground?.steps ?? const <Step>[];
   final scenarioSteps = sc.steps.map((s) => _convertStep(s, filePath)).toList();
-  final allSteps = [...extraSteps, ...scenarioSteps];
+  // Per Gherkin Pickle compilation rules, empty scenarios do not inherit background steps.
+  final allSteps = scenarioSteps.isEmpty ? const <Step>[] : [...extraSteps, ...scenarioSteps];
 
   if (sc.examples.isEmpty) {
-    scenarios.add(Scenario(name: sc.name, tags: tags, steps: allSteps));
+    final scenario = Scenario(name: sc.name, tags: tags, steps: allSteps, pickle: picklesByAstKey[sc.id]);
+    scenarios.add(scenario);
+    orderedScenarioItems.add(scenario);
   } else {
     final examples = sc.examples.map((ex) {
       final headers = ex.tableHeader?.cells.map((c) => c.value).toList() ?? [];
       final rows = ex.tableBody.map((r) => r.cells.map((c) => c.value).toList()).toList();
+      final rowPickles = ex.tableBody.map((r) => picklesByAstKey['${sc.id}:${r.id}']).toList();
       return ExampleTable(
         name: ex.name.trim().isNotEmpty ? ex.name.trim() : null,
         tags: ex.tags.map((t) => _cleanTag(t.name)).toList(),
         headers: headers,
         rows: rows,
         location: SourceLocation(filePath: filePath, line: ex.location.line, column: ex.location.column),
+        rowPickles: rowPickles,
       );
     }).toList();
 
-    scenarioOutlines.add(ScenarioOutline(name: sc.name, tags: tags, steps: allSteps, examples: examples));
+    final outline = ScenarioOutline(name: sc.name, tags: tags, steps: allSteps, examples: examples);
+    scenarioOutlines.add(outline);
+    orderedScenarioItems.add(outline);
   }
 }
 
@@ -534,7 +687,7 @@ Step _convertStep(cm.Step s, String filePath) {
   final keyword = _mapKeyword(s.keyword, s.keywordType);
   return Step(
     keyword: keyword,
-    text: s.text.trim(),
+    text: s.text,
     location: SourceLocation(filePath: filePath, line: s.location.line, column: s.location.column),
     dataTable: _mapDataTable(s.dataTable, filePath),
     docString: _mapDocString(s.docString, filePath),
@@ -603,7 +756,29 @@ Background _convertBackground(cm.Background bg, String filePath) {
 
 String? _cleanDescription(String? raw) {
   if (raw == null || raw.trim().isEmpty) return null;
-  return raw.split('\n').map((l) => l.trim()).where((l) => l.isNotEmpty).join('\n');
+  final trimmedLines = raw.split('\n').map((l) => l.trim()).toList();
+  while (trimmedLines.isNotEmpty && trimmedLines.first.isEmpty) {
+    trimmedLines.removeAt(0);
+  }
+  while (trimmedLines.isNotEmpty && trimmedLines.last.isEmpty) {
+    trimmedLines.removeLast();
+  }
+  if (trimmedLines.isEmpty) return null;
+
+  final normalized = <String>[];
+  var lastWasEmpty = false;
+  for (final line in trimmedLines) {
+    if (line.isEmpty) {
+      if (!lastWasEmpty) {
+        normalized.add('');
+        lastWasEmpty = true;
+      }
+    } else {
+      normalized.add(line);
+      lastWasEmpty = false;
+    }
+  }
+  return normalized.join('\n');
 }
 
 String _cleanTag(String tag) => tag.startsWith('@') ? tag.substring(1) : tag;

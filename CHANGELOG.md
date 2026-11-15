@@ -13,9 +13,19 @@
   - `*` (bullet / asterisk) steps supported in backgrounds, scenarios, outlines, and rules
 - **Multi-language support (i18n)** — parse feature files in 70+ languages supported by Cucumber
   using the standard `# language: <locale>` comment header.
-- **Enhanced Data Table & Doc String support** — supports escaped pipes (`\|`) and empty cells
-  in tables, both `"""` and ```` ``` ```` delimiters for doc strings, and placeholder substitution
-  within step-attached tables and doc strings in Scenario Outlines.
+- **Cucumber Messages NDJSON reporting** — added `NdjsonReporter`, `NdjsonFileReporter`, and
+  `ReportMode.ndjson` emitting standard Cucumber Messages protocol envelopes (`Meta`, `Source`,
+  `GherkinDocument`, `Pickle`, `StepDefinition`, `TestRunStarted`, `TestCase`, `TestCaseStarted`,
+  `TestStepStarted`, `Suggestion`, `TestStepFinished`, `TestCaseFinished`, `TestRunFinished`),
+  unlocking official Cucumber HTML, JSON, and JUnit formatters.
+- **Dynamic step skipping** — step functions can throw `SkipScenarioException` to mark a step and
+  any remaining steps in the scenario as `SKIPPED` without failing the run.
+- **Official Cucumber compliance suites** — verified against all 62 `cucumber/gherkin` good/bad
+  acceptance feature files and 11 Cucumber Compatibility Kit (CCK) suites (`just test-compliance`).
+- **Enhanced Data Table, Doc String & Description support** — supports escaped pipes (`\|`) and empty
+  cells in tables, both `"""` and ```` ``` ```` delimiters for doc strings, multi-paragraph feature
+  descriptions, and `<param>` placeholder substitution within Scenario Outline titles, step-attached
+  tables, and doc string content & media types.
 - **Precise parse diagnostics** — `GherkinParseException` provides line and column coordinates for
   malformed feature files.
 - **Pre-sanitizer with migration diagnostics** — automatically translates legacy syntax

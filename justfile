@@ -17,6 +17,11 @@ test-all:
 test-unit:
     dart test test/unit/
 
+# Run official Cucumber Gherkin & CCK compliance suites
+[group('test')]
+test-compliance:
+    dart test test/compliance/
+
 # Run all example tests
 [group('test')]
 test-example:
@@ -50,7 +55,7 @@ test-example-i18n:
 # Run tests with coverage
 [group('test')]
 test-coverage:
-    dart test --coverage=coverage test/unit/
+    dart test --coverage=coverage test/unit/ test/compliance/
     dart run coverage:format_coverage --lcov --in=coverage --out=coverage/lcov.info --report-on=lib
     dart run tool/report_coverage.dart
 

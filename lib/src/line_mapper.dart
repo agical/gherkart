@@ -4,6 +4,27 @@
 /// (possibly empty) if it does match.
 typedef LineMapper = List<dynamic>? Function(String line);
 
+/// Metadata about a single matched parameter argument (offset, raw text, and type name).
+class MatchedArgumentInfo {
+  final int start;
+  final String value;
+  final String? parameterTypeName;
+
+  const MatchedArgumentInfo({required this.start, required this.value, this.parameterTypeName});
+}
+
+/// Metadata attached to a [LineMapper] created via [StringLineMapper.mapper].
+class LineMapperMetadata {
+  final String pattern;
+  final String expressionSource;
+  final List<MatchedArgumentInfo>? Function(String line) matchArguments;
+
+  const LineMapperMetadata({required this.pattern, required this.expressionSource, required this.matchArguments});
+}
+
+/// Internal [Expando] storing pattern metadata for [LineMapper] closures.
+final Expando<LineMapperMetadata> lineMapperMetadata = Expando<LineMapperMetadata>('lineMapperMetadata');
+
 /// Extension to create LineMappers from String patterns.
 ///
 /// Pattern syntax:
@@ -29,6 +50,16 @@ extension StringLineMapper on String {
   LineMapper mapper({Map<String, Type>? types}) {
     final pattern = this;
     final paramNames = <String>[];
+    final literalLengths = <int>[];
+    final tokenRegex = RegExp(r'\{(\w+)\}');
+
+    var lastEnd = 0;
+    for (final m in tokenRegex.allMatches(pattern)) {
+      literalLengths.add(m.start - lastEnd);
+      paramNames.add(m.group(1)!);
+      lastEnd = m.end;
+    }
+    literalLengths.add(pattern.length - lastEnd);
 
     // Escape special regex characters, but not our {param} placeholders
     var regexPattern = pattern.replaceAllMapped(RegExp(r'[.*+?^${}()|[\]\\]'), (match) {
@@ -39,15 +70,21 @@ extension StringLineMapper on String {
     });
 
     // Replace {paramName} with capturing groups
-    regexPattern = regexPattern.replaceAllMapped(RegExp(r'\{(\w+)\}'), (match) {
-      paramNames.add(match.group(1)!);
-      return '(.+?)'; // Non-greedy capture
+    regexPattern = regexPattern.replaceAllMapped(tokenRegex, (_) => '(.+?)');
+
+    // Build Cucumber Expression source representation for Cucumber Messages
+    final expressionSource = pattern.replaceAllMapped(tokenRegex, (m) {
+      final name = m.group(1)!;
+      final t = types?[name];
+      if (t == int) return '{int}';
+      if (t == double) return '{float}';
+      return '{}';
     });
 
     // Anchor the pattern
     final regex = RegExp('^$regexPattern\$');
 
-    return (String line) {
+    List<dynamic>? fn(String line) {
       final match = regex.firstMatch(line);
       if (match == null) return null;
 
@@ -57,19 +94,58 @@ extension StringLineMapper on String {
         final paramName = paramNames[i];
         final targetType = types?[paramName] ?? String;
 
-        params.add(_convert(rawValue, targetType));
+        final converted = _tryConvert(rawValue, targetType);
+        if (converted == null && targetType != String) {
+          return null;
+        }
+        params.add(converted);
       }
       return params;
-    };
+    }
+
+    lineMapperMetadata[fn] = LineMapperMetadata(
+      pattern: pattern,
+      expressionSource: expressionSource,
+      matchArguments: (String line) {
+        final match = regex.firstMatch(line);
+        if (match == null) return null;
+
+        final args = <MatchedArgumentInfo>[];
+        var offset = literalLengths[0];
+        for (var i = 0; i < paramNames.length; i++) {
+          final rawValue = match.group(i + 1)!;
+          final paramName = paramNames[i];
+          final targetType = types?[paramName] ?? String;
+          final converted = _tryConvert(rawValue, targetType);
+          if (converted == null && targetType != String) {
+            return null;
+          }
+          final typeName = switch (targetType) {
+            const (int) => 'int',
+            const (double) => 'float',
+            const (String) => 'string',
+            _ => null,
+          };
+          args.add(MatchedArgumentInfo(start: offset, value: rawValue, parameterTypeName: typeName));
+          offset += rawValue.length + literalLengths[i + 1];
+        }
+        return args;
+      },
+    );
+
+    return fn;
   }
 
-  static dynamic _convert(String value, Type type) {
+  static dynamic _tryConvert(String value, Type type) {
     if (type == int) {
-      return int.parse(value);
+      return int.tryParse(value);
     } else if (type == double) {
-      return double.parse(value);
+      return double.tryParse(value);
     } else if (type == bool) {
-      return value.toLowerCase() == 'true';
+      final lower = value.toLowerCase();
+      if (lower == 'true') return true;
+      if (lower == 'false') return false;
+      return false;
     }
     return value;
   }
