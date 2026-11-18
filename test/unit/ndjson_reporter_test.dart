@@ -2,6 +2,7 @@
 // Use of this source code is governed by an MIT-style license that can be
 // found in the LICENSE file.
 
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
@@ -149,7 +150,7 @@ Feature: Failure handling
     test('handles upfront missing-step failure in BddTestRunner and emits UNDEFINED + Suggestion', () async {
       final reporter = NdjsonReporter();
       final scenarios = <Future<void> Function()>[];
-      void Function()? tearDown;
+      FutureOr<void> Function()? tearDown;
 
       final adapter = TestAdapter<void>(
         testFunction: (name, {tags, skip = false, callback = _noop}) {
@@ -161,7 +162,7 @@ Feature: Failure handling
         },
         group: (_, body) => body(),
         setUpAll: (_) {},
-        tearDownAll: (fn) => tearDown = () => fn(),
+        tearDownAll: (fn) => tearDown = fn,
         fail: (msg) => throw StateError(msg),
       );
 
@@ -189,7 +190,7 @@ Feature: Upfront Missing
       for (final run in scenarios) {
         await run();
       }
-      tearDown?.call();
+      if (tearDown != null) await tearDown!();
 
       final stepStatuses = reporter.envelopes
           .where((e) => e.testStepFinished != null)

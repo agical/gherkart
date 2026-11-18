@@ -667,7 +667,7 @@ Feature: Reporter Events
         await cb();
       }
 
-      if (recordedTearDownAll != null) recordedTearDownAll!();
+      if (recordedTearDownAll != null) await recordedTearDownAll!();
 
       expect(events, contains('report_flushed:1'));
       expect(completedResults, isNotNull);
