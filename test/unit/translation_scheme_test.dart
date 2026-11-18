@@ -9,27 +9,20 @@ void main() {
   group('TranslationScheme', () {
     group('createMapTranslationHandler', () {
       test('resolves known keys', () async {
-        final handler = createMapTranslationHandler({
-          'greeting': 'Hello!',
-          'farewell': 'Goodbye!',
-        });
+        final handler = createMapTranslationHandler({'greeting': 'Hello!', 'farewell': 'Goodbye!'});
 
         expect(await handler('greeting', {}), 'Hello!');
         expect(await handler('farewell', {}), 'Goodbye!');
       });
 
       test('throws on unknown key', () async {
-        final handler = createMapTranslationHandler({
-          'greeting': 'Hello!',
-        });
+        final handler = createMapTranslationHandler({'greeting': 'Hello!'});
 
         expect(
           () => handler('unknown', {}),
-          throwsA(isA<ArgumentError>().having(
-            (e) => e.message,
-            'message',
-            contains('Translation key "unknown" not found'),
-          )),
+          throwsA(
+            isA<ArgumentError>().having((e) => e.message, 'message', contains('Translation key "unknown" not found')),
+          ),
         );
       });
     });
@@ -67,11 +60,13 @@ void main() {
 
         expect(
           () => handler('unknownKey', {}),
-          throwsA(isA<ArgumentError>().having(
-            (e) => e.message,
-            'message',
-            contains('Translation key "unknownKey" not found'),
-          )),
+          throwsA(
+            isA<ArgumentError>().having(
+              (e) => e.message,
+              'message',
+              contains('Translation key "unknownKey" not found'),
+            ),
+          ),
         );
       });
     });
@@ -79,12 +74,7 @@ void main() {
     group('integration with SchemeResolver', () {
       test('resolves translation scheme', () async {
         final resolver = SchemeResolver()
-          ..register(
-              't',
-              createMapTranslationHandler({
-                'greeting': 'Hello!',
-                'sessionTitle': 'Sessions',
-              }));
+          ..register('t', createMapTranslationHandler({'greeting': 'Hello!', 'sessionTitle': 'Sessions'}));
 
         final result = await resolver.resolve('{t:greeting}');
 
@@ -116,12 +106,7 @@ void main() {
 
     group('parameterized translations with map handler', () {
       test('substitutes single placeholder in map translation', () async {
-        final resolver = SchemeResolver()
-          ..register(
-              't',
-              createMapTranslationHandler({
-                'shotLabel': '{shots} shot(s)',
-              }));
+        final resolver = SchemeResolver()..register('t', createMapTranslationHandler({'shotLabel': '{shots} shot(s)'}));
 
         final result = await resolver.resolve('{t:shotLabel(shots: 3)}');
 
@@ -130,11 +115,7 @@ void main() {
 
       test('substitutes multiple placeholders in map translation', () async {
         final resolver = SchemeResolver()
-          ..register(
-              't',
-              createMapTranslationHandler({
-                'greeting': 'Good {time}, {name}!',
-              }));
+          ..register('t', createMapTranslationHandler({'greeting': 'Good {time}, {name}!'}));
 
         final result = await resolver.resolve('{t:greeting(name: \'Alice\', time: \'morning\')}');
 
@@ -143,12 +124,7 @@ void main() {
 
       test('plain key still works alongside parameterized key', () async {
         final resolver = SchemeResolver()
-          ..register(
-              't',
-              createMapTranslationHandler({
-                'hello': 'Hello, World!',
-                'shotLabel': '{shots} shot(s)',
-              }));
+          ..register('t', createMapTranslationHandler({'hello': 'Hello, World!', 'shotLabel': '{shots} shot(s)'}));
 
         final plain = await resolver.resolve('{t:hello}');
         final parameterized = await resolver.resolve('{t:shotLabel(shots: 1)}');

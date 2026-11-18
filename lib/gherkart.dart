@@ -9,14 +9,14 @@
 /// 1. Define your step registry:
 /// ```dart
 /// final registry = StepRegistry<PatrolTester>()
-///   ..given('I am on the login page', ($, params) async {
+///   ..given('I am on the login page', ($, ctx) async {
 ///     await $.pumpWidgetAndSettle(const LoginPage());
 ///   })
-///   ..when('I enter {email} and {password}', ($, params) async {
-///     await $(#emailField).enterText(params[0]);
-///     await $(#passwordField).enterText(params[1]);
+///   ..when('I enter {string} and {string}', ($, ctx) async {
+///     await $(#emailField).enterText(ctx.arg<String>(0));
+///     await $(#passwordField).enterText(ctx.arg<String>(1));
 ///   })
-///   ..then('I should see the dashboard', ($, params) async {
+///   ..then('I should see the dashboard', ($, ctx) async {
 ///     expect($(#dashboard), findsOneWidget);
 ///   });
 /// ```
@@ -67,6 +67,15 @@
 library;
 
 // Core types
+export 'package:cucumber_expressions/cucumber_expressions.dart'
+    show
+        AmbiguousParameterTypeException,
+        CucumberExpressionException,
+        ParameterType,
+        ParameterTypeRegistry,
+        Transformer,
+        UndefinedParameterTypeException;
+
 export 'src/bdd_output.dart' show BddOutput;
 export 'src/bdd_reporter.dart'
     show
@@ -90,6 +99,7 @@ export 'src/bdd_reporter.dart'
         ReporterEvent,
         ScenarioResult,
         ScenarioStatus,
+        SkipScenarioException,
         StepResult,
         StepStatus,
         SummaryReporter,
@@ -112,6 +122,7 @@ export 'src/feature_parser.dart'
         DocString,
         ExampleTable,
         Feature,
+        GherkinParseException,
         Scenario,
         ScenarioOutline,
         SourceLocation,
@@ -119,13 +130,17 @@ export 'src/feature_parser.dart'
         StepKeyword,
         discoverFeatureFiles,
         parseFeature,
-        parseFeatureFile;
+        parseFeatureFile,
+        sanitizeGherkin;
 export 'src/feature_source.dart' show AssetSource, FeatureSource, FeatureSourceException;
 export 'src/feature_test_factory.dart'
     show FeatureTestFactory, MissingStepsException, TestCase, TestGroup, TestPlan, TestStructure;
-export 'src/line_mapper.dart' show LineMapper, StringLineMapper;
+export 'src/line_mapper.dart' show LineMapper, RegExpLineMapper, StringLineMapper;
 export 'src/markdown_file_reporter.dart' show MarkdownFileReporter;
+export 'src/ndjson_file_reporter.dart' show NdjsonFileReporter;
+export 'src/ndjson_reporter.dart' show NdjsonReporter;
 export 'src/scheme_resolver.dart' show ResolvedParam, SchemeHandler, SchemeResolver;
-export 'src/step_registry.dart' show StepContext, StepFunction, StepMatch, StepRegistry;
+export 'src/step_registry.dart'
+    show CustomParameterTypeInfo, StepContext, StepDefinitionProvider, StepFunction, StepMatch, StepRegistry;
 export 'src/translation_scheme.dart'
     show createArbTranslationHandler, createKeyMappingHandler, createMapTranslationHandler, createTranslationHandler;

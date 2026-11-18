@@ -13,9 +13,12 @@ topics:
   - flutter
 
 environment:
-  sdk: '>=3.2.0 <4.0.0'
+  sdk: '>=3.8.0 <4.0.0'
 
 dependencies:
+  cucumber_expressions: ^20.1.0
+  cucumber_gherkin: ^42.0.1
+  cucumber_messages: ^34.2.1
   meta: ^1.9.0
   path: ^1.8.0
 

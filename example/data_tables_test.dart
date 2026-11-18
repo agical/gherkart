@@ -76,10 +76,7 @@ Future<void> main() async {
   final allSteps = inventorySteps.merge(configSteps);
 
   await runBddTests<void>(
-    rootPaths: [
-      'example/features/data_tables.feature',
-      'example/features/doc_strings.feature',
-    ],
+    rootPaths: ['example/features/data_tables.feature', 'example/features/doc_strings.feature'],
     registry: allSteps,
     source: FileSystemSource(),
     adapter: _createTestAdapter(),
@@ -97,11 +94,6 @@ TestAdapter<void> _createTestAdapter() {
   );
 }
 
-void _testFunction(
-  String name, {
-  List<String>? tags,
-  bool skip = false,
-  Future<void> Function(void)? callback,
-}) {
+void _testFunction(String name, {List<String>? tags, bool skip = false, Future<void> Function(void)? callback}) {
   test(name, () => callback!(null), tags: tags, skip: skip);
 }

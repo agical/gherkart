@@ -13,12 +13,17 @@
 /// - [MarkdownFileReporter]: Writes markdown files for non-technical readers
 library;
 
+import 'package:cucumber_messages/cucumber_messages.dart' as cm;
+
 import 'feature_parser.dart' as parser;
 import 'markdown_file_reporter.dart';
+import 'ndjson_file_reporter.dart';
 
 // Re-export types needed by other modules
 export 'feature_parser.dart' show Scenario, Step, StepKeyword;
 export 'markdown_file_reporter.dart' show MarkdownFileReporter;
+export 'ndjson_file_reporter.dart' show NdjsonFileReporter;
+export 'ndjson_reporter.dart' show NdjsonReporter;
 
 // === Enums for result statuses ===
 
@@ -31,6 +36,17 @@ enum ScenarioStatus { passed, failed, skipped }
 /// Status of a feature execution.
 enum FeatureStatus { passed, failed, mixed }
 
+/// Exception that a step function can throw to dynamically skip the current
+/// scenario (and any remaining steps in it) without marking the scenario as failed.
+class SkipScenarioException implements Exception {
+  final String? message;
+
+  const SkipScenarioException([this.message]);
+
+  @override
+  String toString() => message != null ? 'SkipScenarioException: $message' : 'SkipScenarioException';
+}
+
 // === Data classes for reporting ===
 
 /// Metadata about a feature being reported.
@@ -42,11 +58,15 @@ class ReportFeature {
   /// The parsed scenarios from the feature file (for showing unexecuted scenarios).
   final List<parser.Scenario> sourceScenarios;
 
+  /// Optional full parsed [parser.Feature] (carries Cucumber Messages AST and Pickles).
+  final parser.Feature? sourceFeature;
+
   ReportFeature({
     required this.name,
     required this.path,
     this.tags = const [],
     this.sourceScenarios = const [],
+    this.sourceFeature,
   });
 
   @override
@@ -62,6 +82,9 @@ class ReportScenario {
   final int? exampleIndex;
   final String? featurePath;
 
+  /// Optional compiled Cucumber [cm.Pickle] associated with this scenario.
+  final cm.Pickle? pickle;
+
   ReportScenario({
     required this.name,
     required this.tags,
@@ -69,6 +92,7 @@ class ReportScenario {
     this.outlineName,
     this.exampleIndex,
     this.featurePath,
+    this.pickle,
   });
 
   @override
@@ -82,12 +106,7 @@ class ReportStep {
   final bool hasTable;
   final bool hasDocString;
 
-  ReportStep({
-    required this.keyword,
-    required this.text,
-    this.hasTable = false,
-    this.hasDocString = false,
-  });
+  ReportStep({required this.keyword, required this.text, this.hasTable = false, this.hasDocString = false});
 
   @override
   String toString() => 'ReportStep($keyword $text)';
@@ -100,30 +119,37 @@ class StepResult {
   final StepStatus status;
   final Duration? duration;
   final String? error;
+  final bool isUndefined;
+  final Object? exception;
+  final StackTrace? stackTrace;
 
   const StepResult._({
     required this.status,
     this.duration,
     this.error,
+    this.isUndefined = false,
+    this.exception,
+    this.stackTrace,
   });
 
-  factory StepResult.passed(Duration duration) => StepResult._(
-        status: StepStatus.passed,
-        duration: duration,
-      );
+  factory StepResult.passed(Duration duration) => StepResult._(status: StepStatus.passed, duration: duration);
 
-  factory StepResult.failed(Duration duration, String error) => StepResult._(
+  factory StepResult.failed(Duration duration, String error, {Object? exception, StackTrace? stackTrace}) =>
+      StepResult._(
         status: StepStatus.failed,
         duration: duration,
         error: error,
+        exception: exception,
+        stackTrace: stackTrace,
       );
 
-  factory StepResult.skipped() => const StepResult._(
-        status: StepStatus.skipped,
-      );
+  factory StepResult.skipped([Duration? duration]) => StepResult._(status: StepStatus.skipped, duration: duration);
+
+  factory StepResult.undefined([String? error]) =>
+      StepResult._(status: StepStatus.failed, duration: Duration.zero, error: error, isUndefined: true);
 
   @override
-  String toString() => 'StepResult($status, ${duration?.inMilliseconds}ms)';
+  String toString() => 'StepResult(${isUndefined ? 'undefined' : status}, ${duration?.inMilliseconds}ms)';
 }
 
 /// Result of a scenario execution.
@@ -131,23 +157,13 @@ class ScenarioResult {
   final ScenarioStatus status;
   final String? error;
 
-  const ScenarioResult._({
-    required this.status,
-    this.error,
-  });
+  const ScenarioResult._({required this.status, this.error});
 
-  factory ScenarioResult.passed() => const ScenarioResult._(
-        status: ScenarioStatus.passed,
-      );
+  factory ScenarioResult.passed() => const ScenarioResult._(status: ScenarioStatus.passed);
 
-  factory ScenarioResult.failed(String error) => ScenarioResult._(
-        status: ScenarioStatus.failed,
-        error: error,
-      );
+  factory ScenarioResult.failed(String error) => ScenarioResult._(status: ScenarioStatus.failed, error: error);
 
-  factory ScenarioResult.skipped() => const ScenarioResult._(
-        status: ScenarioStatus.skipped,
-      );
+  factory ScenarioResult.skipped() => const ScenarioResult._(status: ScenarioStatus.skipped);
 
   @override
   String toString() => 'ScenarioResult($status)';
@@ -159,17 +175,11 @@ class FeatureResult {
 
   const FeatureResult._({required this.status});
 
-  factory FeatureResult.passed() => const FeatureResult._(
-        status: FeatureStatus.passed,
-      );
+  factory FeatureResult.passed() => const FeatureResult._(status: FeatureStatus.passed);
 
-  factory FeatureResult.failed() => const FeatureResult._(
-        status: FeatureStatus.failed,
-      );
+  factory FeatureResult.failed() => const FeatureResult._(status: FeatureStatus.failed);
 
-  factory FeatureResult.mixed() => const FeatureResult._(
-        status: FeatureStatus.mixed,
-      );
+  factory FeatureResult.mixed() => const FeatureResult._(status: FeatureStatus.mixed);
 
   @override
   String toString() => 'FeatureResult($status)';
@@ -481,15 +491,17 @@ class SummaryReporter implements BddReporter {
 
   @override
   void flush() {
-    onSummary(TestSummary(
-      featureCount: _featureCount,
-      scenarioPassed: _scenarioPassed,
-      scenarioFailed: _scenarioFailed,
-      scenarioSkipped: _scenarioSkipped,
-      stepPassed: _stepPassed,
-      stepFailed: _stepFailed,
-      stepSkipped: _stepSkipped,
-    ));
+    onSummary(
+      TestSummary(
+        featureCount: _featureCount,
+        scenarioPassed: _scenarioPassed,
+        scenarioFailed: _scenarioFailed,
+        scenarioSkipped: _scenarioSkipped,
+        stepPassed: _stepPassed,
+        stepFailed: _stepFailed,
+        stepSkipped: _stepSkipped,
+      ),
+    );
   }
 }
 
@@ -639,10 +651,7 @@ class FileReporter implements BddReporter {
   ///
   /// [writer] can be provided for testing to capture output instead of
   /// writing to the file system.
-  FileReporter({
-    required this.outputPath,
-    this.writer,
-  });
+  FileReporter({required this.outputPath, this.writer});
 
   @override
   void onFeatureStart(ReportFeature feature) {
@@ -711,8 +720,10 @@ class FileReporter implements BddReporter {
     buffer.writeln();
     buffer.writeln('## Summary');
     buffer.writeln();
-    buffer.writeln('${_features.length} feature${_features.length == 1 ? '' : 's'}, '
-        '$scenarioCount scenario${scenarioCount == 1 ? '' : 's'}');
+    buffer.writeln(
+      '${_features.length} feature${_features.length == 1 ? '' : 's'}, '
+      '$scenarioCount scenario${scenarioCount == 1 ? '' : 's'}',
+    );
 
     final content = buffer.toString();
     if (writer != null) {
@@ -765,19 +776,22 @@ enum ReportMode {
   summary,
 
   /// Writes markdown files for each feature (for non-technical readers).
-  file;
+  file,
+
+  /// Writes Cucumber Messages NDJSON to `<outputDir>/cucumber-messages.ndjson`.
+  ndjson;
 
   /// Whether this mode outputs live during execution.
   bool get isLive => this == ReportMode.continuous;
 
   /// Whether this mode buffers output.
-  bool get isBuffered => this == ReportMode.full;
+  bool get isBuffered => this == ReportMode.full || this == ReportMode.ndjson;
 
   /// Whether this mode shows only summary.
   bool get isSummaryOnly => this == ReportMode.summary;
 
   /// Whether this mode writes to files.
-  bool get writesToFile => this == ReportMode.file;
+  bool get writesToFile => this == ReportMode.file || this == ReportMode.ndjson;
 }
 
 // === Reporter Configuration ===
@@ -802,8 +816,8 @@ class ReporterConfig {
   /// Creates a reporter configuration.
   ///
   /// Use [mode] for a single reporter or [modes] for multiple combined reporters.
-  /// When [mode] is [ReportMode.file] or [modes] contains [ReportMode.file],
-  /// [outputDir] must be provided.
+  /// When [mode] is [ReportMode.file] or [ReportMode.ndjson], or [modes] contains
+  /// either, [outputDir] must be provided.
   ReporterConfig({
     this.mode = ReportMode.continuous,
     this.modes = const [],
@@ -820,9 +834,7 @@ class ReporterConfig {
       return _createSingleReporter(allModes.first);
     }
 
-    return CompositeReporter(
-      allModes.map(_createSingleReporter).toList(),
-    );
+    return CompositeReporter(allModes.map(_createSingleReporter).toList());
   }
 
   BddReporter _createSingleReporter(ReportMode mode) {
@@ -830,25 +842,21 @@ class ReporterConfig {
 
     switch (mode) {
       case ReportMode.continuous:
-        return ContinuousReporter(
-          onEvent: (event) => print(_formatEvent(event)),
-        );
+        return ContinuousReporter(onEvent: (event) => print(_formatEvent(event)));
       case ReportMode.full:
-        return BufferedReporter(
-          onComplete: (results) => print(results.toString()),
-        );
+        return BufferedReporter(onComplete: (results) => print(results.toString()));
       case ReportMode.summary:
-        return SummaryReporter(
-          onSummary: (summary) => print(summary.toString()),
-        );
+        return SummaryReporter(onSummary: (summary) => print(summary.toString()));
       case ReportMode.file:
         if (outputDir == null) {
           throw ArgumentError('outputDir is required for file mode');
         }
-        return MarkdownFileReporter(
-          outputDir: outputDir!,
-          cleanFirst: cleanFirst,
-        );
+        return MarkdownFileReporter(outputDir: outputDir!, cleanFirst: cleanFirst);
+      case ReportMode.ndjson:
+        if (outputDir == null) {
+          throw ArgumentError('outputDir is required for ndjson mode');
+        }
+        return NdjsonFileReporter(outputPath: '$outputDir/cucumber-messages.ndjson');
     }
   }
 
@@ -859,9 +867,10 @@ class ReporterConfig {
       ScenarioStartEvent e => '  🎬 Scenario: ${e.scenario.name}',
       ScenarioCompleteEvent _ => '',
       StepStartEvent e => '    ${e.step.keyword} ${e.step.text}',
-      StepCompleteEvent e => e.result.status == StepStatus.passed
-          ? '    ✓ ${e.step.keyword} ${e.step.text}'
-          : '    ✗ ${e.step.keyword} ${e.step.text}',
+      StepCompleteEvent e =>
+        e.result.status == StepStatus.passed
+            ? '    ✓ ${e.step.keyword} ${e.step.text}'
+            : '    ✗ ${e.step.keyword} ${e.step.text}',
     };
   }
 

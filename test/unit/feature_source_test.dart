@@ -9,9 +9,7 @@ void main() {
   group('AssetSource', () {
     group('fromMap', () {
       test('reads content from map', () async {
-        final source = AssetSource.fromMap({
-          'test.feature': 'Feature: Test',
-        });
+        final source = AssetSource.fromMap({'test.feature': 'Feature: Test'});
 
         final content = await source.read('test.feature');
 
@@ -19,20 +17,13 @@ void main() {
       });
 
       test('throws on missing path', () async {
-        final source = AssetSource.fromMap({
-          'test.feature': 'Feature: Test',
-        });
+        final source = AssetSource.fromMap({'test.feature': 'Feature: Test'});
 
-        expect(
-          () => source.read('missing.feature'),
-          throwsA(isA<FeatureSourceException>()),
-        );
+        expect(() => source.read('missing.feature'), throwsA(isA<FeatureSourceException>()));
       });
 
       test('lists single feature file', () async {
-        final source = AssetSource.fromMap({
-          'test.feature': 'Feature: Test',
-        });
+        final source = AssetSource.fromMap({'test.feature': 'Feature: Test'});
 
         final files = await source.list('test.feature');
 
@@ -57,9 +48,7 @@ void main() {
       });
 
       test('returns empty list for non-existent directory', () async {
-        final source = AssetSource.fromMap({
-          'features/test.feature': 'Feature: Test',
-        });
+        final source = AssetSource.fromMap({'features/test.feature': 'Feature: Test'});
 
         final files = await source.list('nonexistent');
 
@@ -67,9 +56,7 @@ void main() {
       });
 
       test('checks existence', () async {
-        final source = AssetSource.fromMap({
-          'test.feature': 'Feature: Test',
-        });
+        final source = AssetSource.fromMap({'test.feature': 'Feature: Test'});
 
         expect(await source.exists('test.feature'), isTrue);
         expect(await source.exists('missing.feature'), isFalse);
@@ -93,10 +80,7 @@ void main() {
       test('lists via lister function', () async {
         final source = AssetSource.fromLoader(
           (path) async => 'content',
-          lister: (path) async => [
-            'features/a.feature',
-            'features/b.feature',
-          ],
+          lister: (path) async => ['features/a.feature', 'features/b.feature'],
         );
 
         final files = await source.list('features');
@@ -107,10 +91,7 @@ void main() {
       test('throws when listing without lister for directory', () async {
         final source = AssetSource.fromLoader((path) async => 'content');
 
-        expect(
-          () => source.list('features'),
-          throwsA(isA<FeatureSourceException>()),
-        );
+        expect(() => source.list('features'), throwsA(isA<FeatureSourceException>()));
       });
 
       test('returns single file when listing .feature path without lister', () async {

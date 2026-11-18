@@ -62,10 +62,7 @@ void main() {
 
     group('scheme handlers', () {
       test('applies translation handler', () async {
-        final translations = {
-          'greeting': 'Hello!',
-          'farewell': 'Goodbye!',
-        };
+        final translations = {'greeting': 'Hello!', 'farewell': 'Goodbye!'};
         resolver.register('t', createTranslationHandler((key) => translations[key]!));
 
         final result = await resolver.resolve('{t:greeting}');
@@ -74,10 +71,7 @@ void main() {
       });
 
       test('applies key mapping handler', () async {
-        final keys = {
-          'bank display': 'BankGameKeys.bankDisplay',
-          'shot counter': 'BankGameKeys.shotCounter',
-        };
+        final keys = {'bank display': 'BankGameKeys.bankDisplay', 'shot counter': 'BankGameKeys.shotCounter'};
         resolver.register('k', createKeyMappingHandler((name) => keys[name]));
 
         final result = await resolver.resolve('{k:shot counter}');
@@ -88,11 +82,7 @@ void main() {
       test('throws on unknown scheme', () async {
         expect(
           () => resolver.resolve('{unknown:value}'),
-          throwsA(isA<ArgumentError>().having(
-            (e) => e.message,
-            'message',
-            contains('Unknown scheme "unknown"'),
-          )),
+          throwsA(isA<ArgumentError>().having((e) => e.message, 'message', contains('Unknown scheme "unknown"'))),
         );
       });
 
@@ -101,15 +91,13 @@ void main() {
 
         expect(
           () => resolver.resolve('{bad:hello}'),
-          throwsA(isA<ArgumentError>().having(
-            (e) => e.message,
-            'message',
-            allOf(
-              contains('Unknown scheme "bad"'),
-              contains('{bad:hello}'),
-              contains('Registered schemes: t'),
+          throwsA(
+            isA<ArgumentError>().having(
+              (e) => e.message,
+              'message',
+              allOf(contains('Unknown scheme "bad"'), contains('{bad:hello}'), contains('Registered schemes: t')),
             ),
-          )),
+          ),
         );
       });
 
@@ -118,15 +106,17 @@ void main() {
 
         expect(
           () => resolver.resolve('{bad:key(name: \'Alice\')}'),
-          throwsA(isA<ArgumentError>().having(
-            (e) => e.message,
-            'message',
-            allOf(
-              contains('Unknown scheme "bad"'),
-              contains('{bad:key(name: \'Alice\')}'),
-              contains('Registered schemes: t'),
+          throwsA(
+            isA<ArgumentError>().having(
+              (e) => e.message,
+              'message',
+              allOf(
+                contains('Unknown scheme "bad"'),
+                contains('{bad:key(name: \'Alice\')}'),
+                contains('Registered schemes: t'),
+              ),
             ),
-          )),
+          ),
         );
       });
     });
@@ -136,11 +126,7 @@ void main() {
         resolver.register('t', (v, params) async => 'T:$v');
         resolver.register('k', (v, params) async => 'K:$v');
 
-        final results = await resolver.resolveAll([
-          '{t:hello}',
-          '{k:element}',
-          'literal',
-        ]);
+        final results = await resolver.resolveAll(['{t:hello}', '{k:element}', 'literal']);
 
         expect(results.length, 3);
         expect(results[0].resolved, 'T:hello');
@@ -167,23 +153,13 @@ void main() {
 
     group('ResolvedParam', () {
       test('toString for scheme param', () {
-        final param = ResolvedParam(
-          original: '{t:greeting}',
-          scheme: 't',
-          value: 'greeting',
-          resolved: 'Hello!',
-        );
+        final param = ResolvedParam(original: '{t:greeting}', scheme: 't', value: 'greeting', resolved: 'Hello!');
 
         expect(param.toString(), 't:greeting -> Hello!');
       });
 
       test('toString for literal param', () {
-        final param = ResolvedParam(
-          original: 'literal',
-          scheme: null,
-          value: 'literal',
-          resolved: 'literal',
-        );
+        final param = ResolvedParam(original: 'literal', scheme: null, value: 'literal', resolved: 'literal');
 
         expect(param.toString(), 'literal: literal');
       });
@@ -283,18 +259,11 @@ void main() {
 
       test('resolveAll works with parameterized values', () async {
         resolver.register('t', (value, params) async {
-          final map = {
-            'shotLabel': '{shots} shot(s)',
-            'hello': 'Hello!',
-          };
+          final map = {'shotLabel': '{shots} shot(s)', 'hello': 'Hello!'};
           return map[value]!;
         });
 
-        final results = await resolver.resolveAll([
-          '{t:shotLabel(shots: 5)}',
-          '{t:hello}',
-          'literal',
-        ]);
+        final results = await resolver.resolveAll(['{t:shotLabel(shots: 5)}', '{t:hello}', 'literal']);
 
         // Resolver does not substitute — raw templates returned
         expect(results[0].resolved, '{shots} shot(s)');
