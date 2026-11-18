@@ -99,7 +99,7 @@ class NdjsonFileReporter implements BddReporter {
     final dartVersion = Platform.version.split(' ').first;
     return cm.Meta(
       protocolVersion: NdjsonReporter.protocolVersion,
-      implementation: const cm.Product(name: 'gherkart', version: '0.2.1'),
+      implementation: const cm.Product(name: 'gherkart', version: '0.3.0'),
       runtime: cm.Product(name: 'Dart', version: dartVersion),
       os: cm.Product(name: Platform.operatingSystem, version: Platform.operatingSystemVersion),
       cpu: cm.Product(name: _inferCpuArchitecture()),

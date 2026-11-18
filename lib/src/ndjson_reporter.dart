@@ -216,7 +216,7 @@ class NdjsonReporter implements BddReporter {
             meta ??
             const cm.Meta(
               protocolVersion: protocolVersion,
-              implementation: cm.Product(name: 'gherkart', version: '0.2.1'),
+              implementation: cm.Product(name: 'gherkart', version: '0.3.0'),
               runtime: cm.Product(name: 'Dart'),
               os: cm.Product(name: 'unknown'),
               cpu: cm.Product(name: 'unknown'),
