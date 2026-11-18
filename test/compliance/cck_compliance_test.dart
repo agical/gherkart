@@ -40,6 +40,12 @@ Future<List<cm.Envelope>> _loadReferenceEnvelopes(String path) async {
 
 Future<void> _noopCallback(void _) async {}
 
+class _Flight {
+  final String from;
+  final String to;
+  const _Flight(this.from, this.to);
+}
+
 /// Runs a CCK suite through [BddTestRunner] + [NdjsonReporter], round-trips the
 /// serialized NDJSON output through `cucumber_messages` schema decoding, and
 /// validates full Cucumber Messages protocol & CCK conformance against [referenceNdjsonPath].
@@ -440,6 +446,106 @@ void main() {
       );
       final expected = await _loadReferenceEnvelopes('test/compliance/cck/multiple-features/multiple-features.ndjson');
       _assertCckConformance(actual, expected, suiteName: 'multiple-features');
+    });
+
+    test('parameter-types (custom ParameterType + nested StepMatchArgument groups)', () async {
+      final registry = StepRegistry<void>()
+        ..defineParameterType(
+          ParameterType<_Flight>(
+            'flight',
+            RegExp(r'([A-Z]{3})-([A-Z]{3})'),
+            'Flight',
+            (groups) => _Flight(groups[0]!, groups[1]!),
+          ),
+        )
+        ..given('{flight} has been delayed', (_, ctx) async {
+          final flight = ctx.arg<_Flight>(0);
+          expect(flight.from, 'LHR');
+          expect(flight.to, 'CDG');
+        });
+
+      final actual = await _executeCckSample(
+        featurePaths: ['test/compliance/cck/parameter-types/parameter-types.feature'],
+        registry: registry,
+      );
+      final expected = await _loadReferenceEnvelopes('test/compliance/cck/parameter-types/parameter-types.ndjson');
+      _assertCckConformance(actual, expected, suiteName: 'parameter-types');
+
+      final paramTypeMsg = actual.singleWhere((e) => e.parameterType != null).parameterType!;
+      expect(paramTypeMsg.name, 'flight');
+      expect(paramTypeMsg.regularExpressions, ['([A-Z]{3})-([A-Z]{3})']);
+
+      final tc = actual.singleWhere((e) => e.testCase != null).testCase!;
+      final arg = tc.testSteps.single.stepMatchArgumentsLists!.single.stepMatchArguments.single;
+      expect(arg.parameterTypeName, 'flight');
+      expect(arg.group.start, 0);
+      expect(arg.group.value, 'LHR-CDG');
+      expect(arg.group.children, hasLength(2));
+      expect(arg.group.children![0].start, 0);
+      expect(arg.group.children![0].value, 'LHR');
+      expect(arg.group.children![1].start, 4);
+      expect(arg.group.children![1].value, 'CDG');
+    });
+
+    test('regular-expression (RegExp step definition with optional capture groups)', () async {
+      final captured = <List<String?>>[];
+      final registry = StepRegistry<void>()
+        ..regex(RegExp(r'^a (.*?)(?: and a (.*?))?(?: and a (.*?))?$'), (_, ctx) async {
+          captured.add(ctx.args.cast<String?>());
+        });
+
+      final actual = await _executeCckSample(
+        featurePaths: ['test/compliance/cck/regular-expression/regular-expression.feature'],
+        registry: registry,
+      );
+      final expected = await _loadReferenceEnvelopes(
+        'test/compliance/cck/regular-expression/regular-expression.ndjson',
+      );
+      _assertCckConformance(actual, expected, suiteName: 'regular-expression');
+
+      final stepDef = actual.singleWhere((e) => e.stepDefinition != null).stepDefinition!;
+      expect(stepDef.pattern.type, cm.StepDefinitionPatternType.regularExpression);
+      expect(captured, [
+        ['cucumber', null, null],
+        ['cucumber', 'zucchini', null],
+        ['cucumber', 'zucchini', 'gourd'],
+      ]);
+    });
+
+    test('data-tables-with-expression (Cucumber Expression {string} + DataTable)', () async {
+      final registry = StepRegistry<void>()
+        ..given('a {string} with a table', (_, ctx) async {
+          expect(ctx.arg<String>(0), 'Cucumber');
+          expect(ctx.table!.allRows, [
+            ['Species', 'Cucumis sativus'],
+          ]);
+        });
+
+      final actual = await _executeCckSample(
+        featurePaths: ['test/compliance/cck/data-tables-with-expression/data-tables-with-expression.feature'],
+        registry: registry,
+      );
+      final expected = await _loadReferenceEnvelopes(
+        'test/compliance/cck/data-tables-with-expression/data-tables-with-expression.ndjson',
+      );
+      _assertCckConformance(actual, expected, suiteName: 'data-tables-with-expression');
+    });
+
+    test('doc-strings-with-expression (Cucumber Expression {string} + DocString)', () async {
+      final registry = StepRegistry<void>()
+        ..given('a {string} with a doc string:', (_, ctx) async {
+          expect(ctx.arg<String>(0), 'Cucumber');
+          expect(ctx.docContent, 'Cucumis sativus');
+        });
+
+      final actual = await _executeCckSample(
+        featurePaths: ['test/compliance/cck/doc-strings-with-expression/doc-strings-with-expression.feature'],
+        registry: registry,
+      );
+      final expected = await _loadReferenceEnvelopes(
+        'test/compliance/cck/doc-strings-with-expression/doc-strings-with-expression.ndjson',
+      );
+      _assertCckConformance(actual, expected, suiteName: 'doc-strings-with-expression');
     });
   });
 }

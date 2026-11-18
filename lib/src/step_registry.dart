@@ -1,3 +1,5 @@
+import 'package:cucumber_expressions/cucumber_expressions.dart' as ce;
+
 import 'feature_parser.dart';
 import 'line_mapper.dart';
 
@@ -97,6 +99,21 @@ class StepMatch<T> {
   }
 }
 
+/// Metadata about a custom [ce.ParameterType] registered on a [StepRegistry].
+class CustomParameterTypeInfo {
+  final String name;
+  final List<String> regularExpressions;
+  final bool preferForRegularExpressionMatch;
+  final bool useForSnippets;
+
+  const CustomParameterTypeInfo({
+    required this.name,
+    required this.regularExpressions,
+    required this.preferForRegularExpressionMatch,
+    required this.useForSnippets,
+  });
+}
+
 /// Type-erased interface allowing reporters (such as `NdjsonReporter`) to
 /// inspect registered step definitions and matched argument offsets regardless
 /// of the registry's context type parameter `T`.
@@ -106,6 +123,15 @@ abstract interface class StepDefinitionProvider {
 
   /// Pattern source string for the step definition at [index], if available.
   String? patternAt(int index);
+
+  /// Whether the step definition at [index] is a regular expression.
+  bool isRegularExpressionAt(int index);
+
+  /// Custom parameter types registered on this provider.
+  List<CustomParameterTypeInfo> get customParameterTypes;
+
+  /// Generates candidate Dart step snippet strings for an undefined [stepText].
+  List<String> generateSnippets(String stepText);
 
   /// Matches [line] against registered step definitions and returns the matched
   /// definition index and argument offsets, or `null` if unmatched.
@@ -122,41 +148,92 @@ class StepDefinitionMatchInfo {
 
 /// Registry for mapping step patterns to their implementations.
 ///
-/// Example:
+/// Supports both official Cucumber Expressions (via [step], [given], [when],
+/// [then], [regex], or `String.cucumber()`) and `String.mapper()` patterns:
+///
 /// ```dart
-/// final registry = StepRegistry<PatrolTester>.fromMap({
-///   'the app is running'.mapper(): ($, ctx) async {
+/// final registry = StepRegistry<PatrolTester>()
+///   ..given('the app is running', ($, ctx) async {
 ///     await $.pumpWidget(const App());
-///   },
-///   'I navigate to "{page}"'.mapper(): ($, ctx) async {
-///     final page = ctx.arg<String>(0);
-///     await $.tap(find.text(page));
-///   },
-///   'I have the following users:'.mapper(): ($, ctx) async {
-///     for (final row in ctx.tableRows) {
-///       await createUser(row['name']!, row['email']!);
-///     }
-///   },
-/// });
+///   })
+///   ..when('I add {int} item(s) to {string}', ($, ctx) async {
+///     final count = ctx.arg<int>(0);
+///     final cart = ctx.arg<String>(1);
+///   });
 /// ```
 class StepRegistry<T> implements StepDefinitionProvider {
   final List<_StepEntry<T>> _entries = [];
+  final ce.ParameterTypeRegistry _parameterTypes;
+  final List<ce.ParameterType<Object?>> _customParameterTypeRefs = [];
 
-  /// Creates an empty registry.
-  StepRegistry();
+  /// Creates an empty registry, optionally seeded with [parameterTypes].
+  StepRegistry({ce.ParameterTypeRegistry? parameterTypes})
+    : _parameterTypes = parameterTypes ?? ce.ParameterTypeRegistry();
 
   /// Creates a registry from a map of mappers to step functions.
-  factory StepRegistry.fromMap(Map<LineMapper, StepFunction<T>> steps) {
-    final registry = StepRegistry<T>();
+  factory StepRegistry.fromMap(Map<LineMapper, StepFunction<T>> steps, {ce.ParameterTypeRegistry? parameterTypes}) {
+    final registry = StepRegistry<T>(parameterTypes: parameterTypes);
     for (final entry in steps.entries) {
       registry.register(entry.key, entry.value);
     }
     return registry;
   }
 
-  /// Registers a step pattern with its implementation.
+  ///Creates a registry from a map of Cucumber Expression strings to step functions.
+  factory StepRegistry.fromExpressions(
+    Map<String, StepFunction<T>> expressions, {
+    ce.ParameterTypeRegistry? parameterTypes,
+  }) {
+    final registry = StepRegistry<T>(parameterTypes: parameterTypes);
+    for (final entry in expressions.entries) {
+      registry.step(entry.key, entry.value);
+    }
+    return registry;
+  }
+
+  /// The underlying [ce.ParameterTypeRegistry] used when compiling Cucumber Expressions.
+  ce.ParameterTypeRegistry get parameterTypes => _parameterTypes;
+
+  /// Registers a custom [ce.ParameterType] for use in Cucumber Expressions and snippet generation.
+  void defineParameterType<P>(ce.ParameterType<P> parameterType) {
+    _parameterTypes.defineParameterType(parameterType);
+    _customParameterTypeRefs.add(parameterType);
+  }
+
+  /// Registers a step using a [LineMapper] (from `.cucumber()`, `.mapper()`, or `RegExp.mapper()`).
   void register(LineMapper mapper, StepFunction<T> function) {
     _entries.add(_StepEntry(mapper: mapper, function: function));
+  }
+
+  /// Registers a step using an official Cucumber Expression [expression].
+  ///
+  /// Supports `{int}`, `{float}`, `{string}`, `{word}`, `{}`, custom parameter
+  /// types registered via [defineParameterType], optional text `(s)`, and
+  /// alternatives `is/are`.
+  void step(String expression, StepFunction<T> function) {
+    final compiled = ce.ExpressionFactory(_parameterTypes).createExpression(expression);
+    register(createExpressionLineMapper(compiled), function);
+  }
+
+  /// Alias for [step] for `Given` steps.
+  void given(String expression, StepFunction<T> function) => step(expression, function);
+
+  /// Alias for [step] for `When` steps.
+  void when(String expression, StepFunction<T> function) => step(expression, function);
+
+  /// Alias for [step] for `Then` steps.
+  void then(String expression, StepFunction<T> function) => step(expression, function);
+
+  /// Alias for [step] for `And` steps.
+  void and(String expression, StepFunction<T> function) => step(expression, function);
+
+  /// Alias for [step] for `But` steps.
+  void but(String expression, StepFunction<T> function) => step(expression, function);
+
+  /// Registers a step using a [RegExp] regular expression backed by `cucumber_expressions`.
+  void regex(RegExp pattern, StepFunction<T> function) {
+    final compiled = ce.ExpressionFactory(_parameterTypes).createExpression(pattern);
+    register(createExpressionLineMapper(compiled, isRegularExpression: true), function);
   }
 
   /// Attempts to match a step line against registered patterns.
@@ -184,6 +261,31 @@ class StepRegistry<T> implements StepDefinitionProvider {
   }
 
   @override
+  bool isRegularExpressionAt(int index) {
+    if (index < 0 || index >= _entries.length) return false;
+    final meta = lineMapperMetadata[_entries[index].mapper];
+    return meta?.isRegularExpression ?? false;
+  }
+
+  @override
+  List<CustomParameterTypeInfo> get customParameterTypes => _customParameterTypeRefs
+      .where((p) => p.name != null && p.name!.isNotEmpty)
+      .map(
+        (p) => CustomParameterTypeInfo(
+          name: p.name!,
+          regularExpressions: p.regexpStrings,
+          preferForRegularExpressionMatch: p.preferForRegexpMatch,
+          useForSnippets: p.useForSnippets,
+        ),
+      )
+      .toList();
+
+  @override
+  List<String> generateSnippets(String stepText) {
+    return suggestPlaceholders(stepText, parameterTypes: _parameterTypes);
+  }
+
+  @override
   StepDefinitionMatchInfo? matchStepDefinition(String line) {
     for (var i = 0; i < _entries.length; i++) {
       final mapper = _entries[i].mapper;
@@ -199,9 +301,23 @@ class StepRegistry<T> implements StepDefinitionProvider {
 
   /// Creates a new registry combining this one with another.
   ///
-  /// Steps from this registry take precedence over steps from [other].
+  /// Steps and custom parameter types from both registries are preserved, with
+  /// steps from this registry taking precedence over steps from [other].
   StepRegistry<T> merge(StepRegistry<T> other) {
-    final merged = StepRegistry<T>();
+    final mergedTypes = ce.ParameterTypeRegistry();
+    final mergedCustomRefs = <ce.ParameterType<Object?>>[];
+    final seenNames = <String>{};
+
+    for (final pt in [..._customParameterTypeRefs, ...other._customParameterTypeRefs]) {
+      final name = pt.name;
+      if (name == null || seenNames.add(name)) {
+        mergedTypes.defineParameterType(pt);
+        mergedCustomRefs.add(pt);
+      }
+    }
+
+    final merged = StepRegistry<T>(parameterTypes: mergedTypes);
+    merged._customParameterTypeRefs.addAll(mergedCustomRefs);
     for (final entry in _entries) {
       merged._entries.add(entry);
     }
@@ -211,49 +327,79 @@ class StepRegistry<T> implements StepDefinitionProvider {
     return merged;
   }
 
-  /// Generates a placeholder step definition for a missing step.
-  ///
-  /// Analyzes the step text to detect likely parameters and generates
-  /// ready-to-paste Dart code.
-  static String suggestPlaceholder(String stepText) {
-    var pattern = stepText;
-    final argExtractors = <String>[];
-    var argIndex = 0;
-
-    // Detect quoted strings as parameters
-    pattern = pattern.replaceAllMapped(RegExp(r'"([^"]*)"'), (match) {
-      final paramName = argIndex == 0 ? 'page' : 'param${argIndex + 1}';
-      argExtractors.add('  final $paramName = ctx.arg<String>($argIndex);');
-      argIndex++;
-      return '"{$paramName}"';
-    });
-
-    // Detect numbers as parameters
-    final hasNumber = RegExp(r'\b\d+\b').hasMatch(pattern);
-    String? typeHint;
-    if (hasNumber) {
-      pattern = pattern.replaceAllMapped(RegExp(r'\b(\d+)\b'), (match) {
-        argExtractors.add('  final number = ctx.arg<int>($argIndex);');
-        typeHint = "'number': int";
-        argIndex++;
-        return '{number}';
-      });
+  /// Generates all candidate Cucumber Expression step definition snippets for
+  /// [stepText] using official [ce.CucumberExpressionGenerator].
+  static List<String> suggestPlaceholders(String stepText, {ce.ParameterTypeRegistry? parameterTypes}) {
+    final generator = ce.CucumberExpressionGenerator(parameterTypes ?? ce.ParameterTypeRegistry());
+    final generated = generator.generateExpressions(stepText);
+    if (generated.isEmpty) {
+      return [_formatGeneratedSnippet(stepText, null)];
     }
+    return generated.map((expr) => _formatGeneratedSnippet(stepText, expr)).toList();
+  }
 
+  /// Generates a ready-to-paste Dart step definition snippet for a missing step,
+  /// powered by official [ce.CucumberExpressionGenerator].
+  static String suggestPlaceholder(String stepText, {ce.ParameterTypeRegistry? parameterTypes}) {
+    return suggestPlaceholders(stepText, parameterTypes: parameterTypes).first;
+  }
+
+  static String _formatGeneratedSnippet(String stepText, ce.GeneratedExpression? expr) {
     final buffer = StringBuffer();
     buffer.writeln('// Missing step: $stepText');
-    buffer.write("'$pattern'.mapper(");
-    if (typeHint != null) {
-      buffer.write('types: {$typeHint}');
-    }
-    buffer.writeln('): (\$, ctx) async {');
-    for (final extractor in argExtractors) {
-      buffer.writeln(extractor);
+    final source = (expr?.source ?? stepText).replaceAll(r'\', r'\\').replaceAll("'", r"\'");
+    buffer.writeln("'$source'.cucumber(): (\$, ctx) async {");
+    if (expr != null) {
+      final names = expr.parameterNames;
+      for (var i = 0; i < expr.parameterTypes.length; i++) {
+        final dartType = expr.parameterTypes[i].type ?? 'Object?';
+        final varName = _sanitizeIdentifier(names[i], i);
+        buffer.writeln('  final $varName = ctx.arg<$dartType>($i);');
+      }
     }
     buffer.writeln('  // TODO: implement step');
     buffer.writeln('},');
-
     return buffer.toString();
+  }
+
+  static const Set<String> _dartReservedWords = {
+    'int',
+    'double',
+    'num',
+    'bool',
+    'var',
+    'final',
+    'const',
+    'void',
+    'null',
+    'true',
+    'false',
+    'class',
+    'enum',
+    'switch',
+    'case',
+    'default',
+    'if',
+    'else',
+    'for',
+    'while',
+    'do',
+    'in',
+    'is',
+    'as',
+    'return',
+    'new',
+    'this',
+    'super',
+  };
+
+  static String _sanitizeIdentifier(String raw, int index) {
+    var cleaned = raw.replaceAll(RegExp(r'[^a-zA-Z0-9_]'), '');
+    if (cleaned.isEmpty) return 'arg${index + 1}';
+    if (_dartReservedWords.contains(cleaned)) {
+      return '${cleaned}Val';
+    }
+    return cleaned;
   }
 }
 

@@ -1,43 +1,165 @@
+import 'package:cucumber_expressions/cucumber_expressions.dart' as ce;
+
 /// A function that attempts to match a line and extract parameters.
 ///
 /// Returns null if the line doesn't match, or a list of extracted parameters
 /// (possibly empty) if it does match.
 typedef LineMapper = List<dynamic>? Function(String line);
 
-/// Metadata about a single matched parameter argument (offset, raw text, and type name).
+/// Metadata about a single matched parameter argument (offset, raw text, nested groups, and type name).
 class MatchedArgumentInfo {
-  final int start;
-  final String value;
+  final int? start;
+  final String? value;
   final String? parameterTypeName;
+  final List<MatchedArgumentInfo>? children;
 
-  const MatchedArgumentInfo({required this.start, required this.value, this.parameterTypeName});
+  const MatchedArgumentInfo({this.start, this.value, this.parameterTypeName, this.children});
 }
 
-/// Metadata attached to a [LineMapper] created via [StringLineMapper.mapper].
+/// Metadata attached to a [LineMapper] created via [StringLineMapper.mapper],
+/// [StringLineMapper.cucumber], or [RegExpLineMapper.mapper].
 class LineMapperMetadata {
   final String pattern;
   final String expressionSource;
+  final bool isRegularExpression;
   final List<MatchedArgumentInfo>? Function(String line) matchArguments;
 
-  const LineMapperMetadata({required this.pattern, required this.expressionSource, required this.matchArguments});
+  const LineMapperMetadata({
+    required this.pattern,
+    required this.expressionSource,
+    this.isRegularExpression = false,
+    required this.matchArguments,
+  });
 }
 
 /// Internal [Expando] storing pattern metadata for [LineMapper] closures.
 final Expando<LineMapperMetadata> lineMapperMetadata = Expando<LineMapperMetadata>('lineMapperMetadata');
 
-/// Extension to create LineMappers from String patterns.
-///
-/// Pattern syntax:
-/// - Literal text matches exactly
-/// - `{paramName}` captures a parameter (non-greedy, stops at next literal)
+class _GroupCursor {
+  int pos;
+  _GroupCursor(this.pos);
+}
+
+MatchedArgumentInfo _groupToMatchedArg(
+  ce.Group group, {
+  String? parameterTypeName,
+  required String parentText,
+  required _GroupCursor cursor,
+}) {
+  final value = group.value;
+  int? start = group.start;
+  if (value != null) {
+    if (start == null) {
+      final found = parentText.indexOf(value, cursor.pos);
+      if (found != -1) {
+        start = found;
+        cursor.pos = found + value.length;
+      }
+    } else {
+      cursor.pos = start + value.length;
+    }
+  }
+
+  List<MatchedArgumentInfo>? children;
+  if (group.children != null) {
+    if (value != null && start != null) {
+      final childCursor = _GroupCursor(start);
+      children = group.children!
+          .map((child) => _groupToMatchedArg(child, parentText: parentText, cursor: childCursor))
+          .toList();
+    } else {
+      children = group.children!
+          .map((child) => _groupToMatchedArg(child, parentText: parentText, cursor: _GroupCursor(cursor.pos)))
+          .toList();
+    }
+  }
+
+  return MatchedArgumentInfo(start: start, value: value, parameterTypeName: parameterTypeName, children: children);
+}
+
+/// Wraps a compiled [ce.Expression] into a [LineMapper] with full Cucumber Messages metadata.
+LineMapper createExpressionLineMapper(ce.Expression expression, {bool isRegularExpression = false}) {
+  List<dynamic>? fn(String line) {
+    final args = expression.match(line);
+    if (args == null) return null;
+    return args.map((a) => a.getValue()).toList();
+  }
+
+  lineMapperMetadata[fn] = LineMapperMetadata(
+    pattern: expression.source,
+    expressionSource: expression.source,
+    isRegularExpression: isRegularExpression,
+    matchArguments: (String line) {
+      final args = expression.match(line);
+      if (args == null) return null;
+      final matchStart = expression.regexp.firstMatch(line)?.start ?? 0;
+      final cursor = _GroupCursor(matchStart);
+      return args
+          .map(
+            (a) => _groupToMatchedArg(
+              a.group,
+              parameterTypeName: (a.parameterType.name != null && a.parameterType.name!.isNotEmpty)
+                  ? a.parameterType.name
+                  : null,
+              parentText: line,
+              cursor: cursor,
+            ),
+          )
+          .toList();
+    },
+  );
+
+  return fn;
+}
+
+/// Extension to create [LineMapper]s from [RegExp] regular expressions using
+/// official `cucumber_expressions` `RegularExpression` matching.
 ///
 /// Example:
 /// ```dart
-/// final mapper = 'I navigate to {page}'.mapper();
-/// mapper('I navigate to Sessions'); // returns ['Sessions']
-/// mapper('something else');         // returns null
+/// RegExp(r'^a (.*?)(?: and a (.*?))?$').mapper()
+/// ```
+extension RegExpLineMapper on RegExp {
+  /// Creates a [LineMapper] backed by an official Cucumber [ce.RegularExpression].
+  LineMapper mapper({ce.ParameterTypeRegistry? parameterTypes}) {
+    final registry = parameterTypes ?? ce.ParameterTypeRegistry();
+    final expression = ce.ExpressionFactory(registry).createExpression(this);
+    return createExpressionLineMapper(expression, isRegularExpression: true);
+  }
+}
+
+/// Extension to create LineMappers from String patterns.
+///
+/// Supports two modes:
+/// 1. [cucumber] — official Cucumber Expression syntax (`{int}`, `{float}`,
+///    `{string}`, `{word}`, `{}`, custom `ParameterType`s, optional `(s)`,
+///    and alternatives `is/are`).
+/// 2. [mapper] — gherkart named-placeholder syntax (`{paramName}` with optional
+///    `types: {'paramName': int}`).
+///
+/// Example:
+/// ```dart
+/// final expr = 'I have {int} apple(s) in {string}'.cucumber();
+/// expr('I have 1 apple in "basket"'); // returns [1, 'basket']
+///
+/// final legacy = 'I navigate to {page}'.mapper();
+/// legacy('I navigate to Sessions');   // returns ['Sessions']
 /// ```
 extension StringLineMapper on String {
+  /// Creates a [LineMapper] using official Cucumber Expression syntax.
+  ///
+  /// Built-in parameter types: `{int}`, `{float}`, `{word}`, `{string}`,
+  /// `{double}`, `{bigdecimal}`, `{byte}`, `{short}`, `{long}`, `{biginteger}`,
+  /// and anonymous `{}`. Also supports optional text `(s)` and alternatives
+  /// `apple/orange`.
+  ///
+  /// Supply [parameterTypes] when referencing custom [ce.ParameterType]s.
+  LineMapper cucumber({ce.ParameterTypeRegistry? parameterTypes}) {
+    final registry = parameterTypes ?? ce.ParameterTypeRegistry();
+    final expression = ce.ExpressionFactory(registry).createExpression(this);
+    return createExpressionLineMapper(expression);
+  }
+
   /// Creates a [LineMapper] from this string pattern.
   ///
   /// [types] optionally specifies type conversions for named parameters.

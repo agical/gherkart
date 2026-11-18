@@ -22,9 +22,10 @@ Parse Gherkin `.feature` files at runtime — no code generation required.
 | Data Tables | Step-attached structured tables with pipe escaping (`\|`) and empty cells |
 | Doc Strings | Multi-line text blocks with triple double-quotes (`"""`) or backticks (```` ``` ````) |
 | Tags | `@smoke`, `@wip`, `@slow` etc. with feature/rule → scenario inheritance |
+| Cucumber Expressions | Official `{int}`, `{float}`, `{string}`, `{word}`, custom `ParameterType`s, `apple(s)`, `is/are`, & `RegExp` |
 | Parse diagnostics | Real line and column error reporting via `GherkinParseException` |
 | Cucumber Messages (NDJSON) | Standard `NdjsonReporter` & `NdjsonFileReporter` compatible with Cucumber HTML/JSON/JUnit formatters |
-| Missing step detection | Reports unregistered steps with source locations |
+| Missing step detection | Reports unregistered steps with source locations & official expression snippet generation |
 
 ### Gherkart Improvements
 
@@ -321,9 +322,44 @@ Feature: Tagged Feature Demo
 
 > Example: [example/demo_test.dart](example/demo_test.dart)
 
-### Pattern Matching
+### Cucumber Expressions & Fluent Registration
 
-Steps are matched by pattern with `{param}` placeholders:
+Powered by official `cucumber_expressions`, step definitions support typed `{int}`, `{float}`, `{string}`, `{word}`, and anonymous `{}` parameters, optional text `apple(s)`, alternatives `is/are`, custom `ParameterType`s, and `RegExp` patterns:
+
+```dart
+final steps = StepRegistry<void>()
+  ..given('there is/are {int} cucumber(s)', ($, ctx) async {
+    _state.count = ctx.arg<int>(0);
+  })
+  ..when('I eat {int} cucumber(s) from {string}', ($, ctx) async {
+    _state.count -= ctx.arg<int>(0);
+    _state.source = ctx.arg<String>(1); // quotes stripped automatically
+  })
+  ..regex(RegExp(r'^I wait (\d+)ms$'), ($, ctx) async {
+    await Future<void>.delayed(Duration(milliseconds: ctx.arg<int>(0)));
+  });
+```
+
+You can also use `.cucumber()` inside `StepRegistry.fromMap` or register custom parameter types:
+
+```dart
+final registry = StepRegistry<void>()
+  ..defineParameterType(
+    ParameterType<Flight>(
+      'flight',
+      RegExp(r'([A-Z]{3})-([A-Z]{3})'),
+      'Flight',
+      (groups) => Flight(groups[0]!, groups[1]!),
+    ),
+  )
+  ..given('{flight} has been delayed', ($, ctx) async {
+    final flight = ctx.arg<Flight>(0);
+  });
+```
+
+### Named-Placeholder `.mapper()` Patterns
+
+Existing named-placeholder patterns via `String.mapper()` continue to work alongside Cucumber Expressions:
 
 ```dart
 final mathSteps = StepRegistry<void>.fromMap({
@@ -339,16 +375,7 @@ final mathSteps = StepRegistry<void>.fromMap({
 });
 ```
 
-### Typed Parameters
-
-The `.mapper()` extension accepts a `types` map for automatic conversion:
-
-| Type     | Example input | Parsed as       |
-|----------|---------------|-----------------|
-| `String` | `"hello"`     | `'hello'`       |
-| `int`    | `42`          | `42`            |
-| `double` | `3.14`        | `3.14`          |
-| `bool`   | `true`        | `true`          |
+The `.mapper()` extension accepts an optional `types` map for conversion (`String`, `int`, `double`, `bool`).
 
 ### Merging Registries
 

@@ -205,7 +205,7 @@ Feature: Upfront Missing
       final suggestions = reporter.envelopes.where((e) => e.suggestion != null).map((e) => e.suggestion!).toList();
       expect(suggestions, hasLength(1));
       expect(suggestions.single.snippets.single.language, 'dart');
-      expect(suggestions.single.snippets.single.code, contains('.mapper('));
+      expect(suggestions.single.snippets.single.code, contains('.cucumber()'));
       expect(reporter.envelopes.last.testRunFinished?.success, isFalse);
     });
 

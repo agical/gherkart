@@ -312,7 +312,8 @@ Feature: Rules Demo
           Step(keyword: StepKeyword.when, text: 'I navigate to "Home"'),
         ]);
 
-        expect(placeholders, contains("'the app is running'.mapper()"));
+        expect(placeholders, contains("'the app is running'.cucumber()"));
+        expect(placeholders, contains("'I navigate to {string}'.cucumber()"));
         expect(placeholders, contains('I navigate to "Home"'));
       });
     });

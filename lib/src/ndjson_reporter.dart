@@ -7,6 +7,7 @@ import 'dart:math';
 import 'package:cucumber_messages/cucumber_messages.dart' as cm;
 
 import 'bdd_reporter.dart';
+import 'line_mapper.dart';
 import 'step_registry.dart';
 
 /// Pure-Dart Cucumber Messages NDJSON reporter.
@@ -261,25 +262,47 @@ class NdjsonReporter implements BddReporter {
       }
     }
 
-    // 3. StepDefinition envelopes
+    // 3. Emit ParameterType and StepDefinition envelopes
     final stepDefIdsByIndex = <int, String>{};
     final syntheticStepDefIdsByText = <String, String>{};
 
     if (_registry != null) {
+      var paramLine = 1;
+      for (final pt in _registry!.customParameterTypes) {
+        emit(
+          cm.Envelope(
+            parameterType: cm.ParameterType(
+              id: nextId(),
+              name: pt.name,
+              regularExpressions: pt.regularExpressions,
+              preferForRegularExpressionMatch: pt.preferForRegularExpressionMatch,
+              useForSnippets: pt.useForSnippets,
+              sourceReference: cm.SourceReference(
+                uri: stepDefinitionsUri,
+                location: cm.Location(line: paramLine++),
+              ),
+            ),
+          ),
+        );
+      }
+
       for (var i = 0; i < _registry!.stepCount; i++) {
         final defId = nextId();
         stepDefIdsByIndex[i] = defId;
+        final isRegex = _registry!.isRegularExpressionAt(i);
         emit(
           cm.Envelope(
             stepDefinition: cm.StepDefinition(
               id: defId,
               pattern: cm.StepDefinitionPattern(
-                type: cm.StepDefinitionPatternType.cucumberExpression,
+                type: isRegex
+                    ? cm.StepDefinitionPatternType.regularExpression
+                    : cm.StepDefinitionPatternType.cucumberExpression,
                 source: _registry!.patternAt(i) ?? 'step_$i',
               ),
               sourceReference: cm.SourceReference(
                 uri: stepDefinitionsUri,
-                location: cm.Location(line: i + 1),
+                location: cm.Location(line: paramLine + i),
               ),
             ),
           ),
@@ -345,10 +368,7 @@ class NdjsonReporter implements BddReporter {
                 cm.StepMatchArgumentsList(
                   stepMatchArguments: matchInfo.arguments
                       .map(
-                        (a) => cm.StepMatchArgument(
-                          group: cm.Group(start: a.start, value: a.value),
-                          parameterTypeName: a.parameterTypeName,
-                        ),
+                        (a) => cm.StepMatchArgument(group: _toMessageGroup(a), parameterTypeName: a.parameterTypeName),
                       )
                       .toList(),
                 ),
@@ -438,12 +458,14 @@ class NdjsonReporter implements BddReporter {
           final dur = cm.durationToDurationMessage(rec.duration ?? Duration.zero);
 
           if (rec.isUndefined || isStepUnmatched) {
+            final snippetCodes =
+                _registry?.generateSnippets(pickleStep.text) ?? StepRegistry.suggestPlaceholders(pickleStep.text);
             emit(
               cm.Envelope(
                 suggestion: cm.Suggestion(
                   id: nextId(),
                   pickleStepId: pickleStep.id,
-                  snippets: [cm.Snippet(language: 'dart', code: StepRegistry.suggestPlaceholder(pickleStep.text))],
+                  snippets: snippetCodes.map((c) => cm.Snippet(language: 'dart', code: c)).toList(),
                 ),
               ),
             );
@@ -470,12 +492,14 @@ class NdjsonReporter implements BddReporter {
             }
           }
         } else if (isStepUnmatched) {
+          final snippetCodes =
+              _registry?.generateSnippets(pickleStep.text) ?? StepRegistry.suggestPlaceholders(pickleStep.text);
           emit(
             cm.Envelope(
               suggestion: cm.Suggestion(
                 id: nextId(),
                 pickleStepId: pickleStep.id,
-                snippets: [cm.Snippet(language: 'dart', code: StepRegistry.suggestPlaceholder(pickleStep.text))],
+                snippets: snippetCodes.map((c) => cm.Snippet(language: 'dart', code: c)).toList(),
               ),
             ),
           );
@@ -540,6 +564,16 @@ class NdjsonReporter implements BddReporter {
           success: allRunSuccess,
         ),
       ),
+    );
+  }
+
+  static cm.Group _toMessageGroup(MatchedArgumentInfo info) {
+    return cm.Group(
+      start: info.start,
+      value: info.value,
+      children: (info.children != null && info.children!.isNotEmpty)
+          ? info.children!.map(_toMessageGroup).toList()
+          : null,
     );
   }
 

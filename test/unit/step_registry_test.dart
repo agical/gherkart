@@ -90,36 +90,157 @@ void main() {
       });
     });
 
-    group('suggestPlaceholder', () {
+    group('suggestPlaceholder & CucumberExpressionGenerator', () {
       test('generates placeholder for simple step', () {
         final suggestion = StepRegistry.suggestPlaceholder('the app is running');
 
-        expect(suggestion, contains("'the app is running'.mapper()"));
+        expect(suggestion, contains("'the app is running'.cucumber()"));
         expect(suggestion, contains('(\$, ctx) async'));
         expect(suggestion, contains('// TODO: implement'));
       });
 
-      test('generates placeholder with detected string parameter', () {
+      test('generates placeholder with detected {string} parameter', () {
         final suggestion = StepRegistry.suggestPlaceholder('I navigate to "Sessions"');
 
-        expect(suggestion, contains('{page}'));
+        expect(suggestion, contains("'I navigate to {string}'.cucumber()"));
         expect(suggestion, contains('ctx.arg<String>(0)'));
       });
 
-      test('generates placeholder with multiple string parameters', () {
+      test('generates placeholder with multiple {string} parameters', () {
         final suggestion = StepRegistry.suggestPlaceholder('I set "name" to "value"');
 
-        expect(suggestion, contains('{page}'));
-        expect(suggestion, contains('{param2}'));
-        expect(suggestion, contains('ctx.arg<String>(0)'));
-        expect(suggestion, contains('ctx.arg<String>(1)'));
+        expect(suggestion, contains("'I set {string} to {string}'.cucumber()"));
+        expect(suggestion, contains('final string = ctx.arg<String>(0)'));
+        expect(suggestion, contains('final string2 = ctx.arg<String>(1)'));
       });
 
-      test('generates placeholder with number parameter', () {
-        final suggestion = StepRegistry.suggestPlaceholder('I wait 5 seconds');
+      test('generates candidate placeholders for integer ({int} and {float})', () {
+        final candidates = StepRegistry.suggestPlaceholders('I wait 5 seconds');
 
-        expect(suggestion, contains('{number}'));
-        expect(suggestion, contains("'number': int"));
+        expect(candidates.length, greaterThanOrEqualTo(2));
+        expect(candidates[0], contains("'I wait {int} seconds'.cucumber()"));
+        expect(candidates[0], contains('final intVal = ctx.arg<int>(0)'));
+        expect(candidates[1], contains("'I wait {float} seconds'.cucumber()"));
+        expect(candidates[1], contains('final float = ctx.arg<double>(0)'));
+      });
+
+      test('includes custom ParameterType in generated snippets', () {
+        final paramTypes = ParameterTypeRegistry()
+          ..defineParameterType(ParameterType<String>('airport', r'[A-Z]{3}', 'String', (g) => g.first!));
+
+        final suggestion = StepRegistry.suggestPlaceholder('flight from LHR to CDG', parameterTypes: paramTypes);
+
+        expect(suggestion, contains("'flight from {airport} to {airport}'.cucumber()"));
+        expect(suggestion, contains('final airport = ctx.arg<String>(0)'));
+        expect(suggestion, contains('final airport2 = ctx.arg<String>(1)'));
+      });
+    });
+
+    group('Cucumber Expressions & RegExp support', () {
+      test('matches typed {int}, {float}, {string}, and {word} without types map', () async {
+        int? count;
+        double? price;
+        String? item;
+        String? currency;
+
+        final registry = StepRegistry<void>.fromMap({
+          'I buy {int} {string} for {float} {word}'.cucumber(): (_, ctx) async {
+            count = ctx.arg<int>(0);
+            item = ctx.arg<String>(1);
+            price = ctx.arg<double>(2);
+            currency = ctx.arg<String>(3);
+          },
+        });
+
+        final match = registry.match('I buy 3 "cucumbers" for 4.50 USD');
+        expect(match, isNotNull);
+        await match!.execute(null);
+
+        expect(count, 3);
+        expect(item, 'cucumbers');
+        expect(price, 4.50);
+        expect(currency, 'USD');
+      });
+
+      test('supports optional text apple(s) and alternatives is/are via fluent API', () async {
+        final captured = <int>[];
+
+        final registry = StepRegistry<void>()
+          ..given('there is/are {int} apple(s) on the tree', (_, ctx) async {
+            captured.add(ctx.arg<int>(0));
+          })
+          ..when('I pick {int} apple(s)', (_, ctx) async {
+            captured.add(ctx.arg<int>(0));
+          })
+          ..then('{int} apple(s) remain(s)', (_, ctx) async {
+            captured.add(ctx.arg<int>(0));
+          })
+          ..and('the basket is empty/full', (_, __) async {})
+          ..but('nothing is spoiled', (_, __) async {});
+
+        await registry.match('there is 1 apple on the tree')!.execute(null);
+        await registry.match('there are 5 apples on the tree')!.execute(null);
+        await registry.match('I pick 2 apples')!.execute(null);
+        await registry.match('3 apples remain')!.execute(null);
+        expect(registry.match('the basket is full'), isNotNull);
+        expect(registry.match('nothing is spoiled'), isNotNull);
+
+        expect(captured, [1, 5, 2, 3]);
+      });
+
+      test('supports custom ParameterType registration and merge', () async {
+        final colors = <String>[];
+
+        final r1 = StepRegistry<void>()
+          ..defineParameterType(
+            ParameterType<String>('color', 'red|green|blue', 'String', (g) => g.first!.toUpperCase()),
+          )
+          ..step('the light is {color}', (_, ctx) async {
+            colors.add(ctx.arg<String>(0));
+          });
+
+        final r2 = StepRegistry<void>.fromExpressions({'I press {word}': (_, __) async {}});
+
+        final merged = r1.merge(r2);
+        expect(merged.customParameterTypes, hasLength(1));
+        expect(merged.customParameterTypes.single.name, 'color');
+
+        await merged.match('the light is green')!.execute(null);
+        expect(colors, ['GREEN']);
+        expect(merged.match('the light is yellow'), isNull);
+        expect(merged.match('I press start'), isNotNull);
+      });
+
+      test('supports RegExp.mapper() and registry.regex()', () async {
+        final registry = StepRegistry<void>.fromMap({
+          RegExp(r'^user (\d+) logs in$').mapper(): (_, ctx) async {
+            expect(ctx.arg<int>(0), 42);
+          },
+        });
+
+        final match = registry.match('user 42 logs in');
+        expect(match, isNotNull);
+        await match!.execute(null);
+        expect(registry.isRegularExpressionAt(0), isTrue);
+      });
+
+      test('coexists cleanly with legacy .mapper() and SchemeResolver', () async {
+        String? resolvedGreeting;
+        final resolver = SchemeResolver()..register('t', (key, _) async => 'Hello from $key');
+
+        final registry = StepRegistry<void>.fromMap({
+          'I see {string}'.cucumber(): (_, ctx) async {
+            resolvedGreeting = ctx.arg<String>(0);
+          },
+          'legacy {name} step'.mapper(): (_, __) async {},
+        });
+
+        final match = registry.match('I see "{t:home}"')!;
+        final resolved = await resolver.resolveAll(match.params);
+        await match.execute(null, resolvedArgs: resolved.map((r) => r.resolved).toList());
+
+        expect(resolvedGreeting, 'Hello from home');
+        expect(registry.match('legacy custom step'), isNotNull);
       });
     });
 

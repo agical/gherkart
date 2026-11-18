@@ -4,8 +4,18 @@
 
 ### Features
 
-- **Adopt official Cucumber Dart packages** — feature parsing is now powered by official
-  `cucumber_gherkin` and `cucumber_messages` packages.
+- **Adopt official Cucumber Dart packages** — feature parsing, step expressions, and message
+  serialization are now powered by official `cucumber_gherkin`, `cucumber_messages`, and
+  `cucumber_expressions` packages.
+- **Official Cucumber Expressions & custom `ParameterType` support**:
+  - Added `String.cucumber()`, `RegExp.mapper()`, `StepRegistry.fromExpressions`, and fluent
+    `step` / `given` / `when` / `then` / `and` / `but` / `regex` methods coexisting seamlessly
+    with `String.mapper()`.
+  - Supports built-in typed `{int}`, `{float}`, `{string}`, `{word}`, and `{}` parameters,
+    optional text (`apple(s)`), alternatives (`is/are`), and custom `ParameterType<T>`
+    definitions via `registry.defineParameterType(...)`.
+  - Replaced custom placeholder suggestion logic in `StepRegistry.suggestPlaceholder` /
+    `suggestPlaceholders` with official `CucumberExpressionGenerator`.
 - **Extended Gherkin keyword support**:
   - `Rule:` sections for grouping scenarios with rule-level backgrounds and tag inheritance
   - `Example:` supported as a synonym for `Scenario:`
@@ -15,13 +25,13 @@
   using the standard `# language: <locale>` comment header.
 - **Cucumber Messages NDJSON reporting** — added `NdjsonReporter`, `NdjsonFileReporter`, and
   `ReportMode.ndjson` emitting standard Cucumber Messages protocol envelopes (`Meta`, `Source`,
-  `GherkinDocument`, `Pickle`, `StepDefinition`, `TestRunStarted`, `TestCase`, `TestCaseStarted`,
-  `TestStepStarted`, `Suggestion`, `TestStepFinished`, `TestCaseFinished`, `TestRunFinished`),
-  unlocking official Cucumber HTML, JSON, and JUnit formatters.
+  `GherkinDocument`, `Pickle`, `ParameterType`, `StepDefinition`, `TestRunStarted`, `TestCase`,
+  `TestCaseStarted`, `TestStepStarted`, `Suggestion`, `TestStepFinished`, `TestCaseFinished`,
+  `TestRunFinished`), unlocking official Cucumber HTML, JSON, and JUnit formatters.
 - **Dynamic step skipping** — step functions can throw `SkipScenarioException` to mark a step and
   any remaining steps in the scenario as `SKIPPED` without failing the run.
 - **Official Cucumber compliance suites** — verified against all 62 `cucumber/gherkin` good/bad
-  acceptance feature files and 11 Cucumber Compatibility Kit (CCK) suites (`just test-compliance`).
+  acceptance feature files and 15 Cucumber Compatibility Kit (CCK) suites (`just test-compliance`).
 - **Enhanced Data Table, Doc String & Description support** — supports escaped pipes (`\|`) and empty
   cells in tables, both `"""` and ```` ``` ```` delimiters for doc strings, multi-paragraph feature
   descriptions, and `<param>` placeholder substitution within Scenario Outline titles, step-attached
