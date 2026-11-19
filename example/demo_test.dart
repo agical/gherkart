@@ -2,9 +2,9 @@
 // Use of this source code is governed by an MIT-style license that can be
 // found in the LICENSE file.
 
-/// Demo: basic scenarios, background steps, tags, and scenario outlines.
+/// Demo: basic scenarios, background steps, tags, scenario outlines, rules, and bullet steps.
 ///
-/// Covers: demo.feature, background.feature, tagged.feature, outline.feature
+/// Covers: demo.feature, background.feature, tagged.feature, outline.feature, rules.feature
 ///
 /// Run with: dart test example/demo_test.dart
 library;
@@ -52,6 +52,7 @@ Future<void> main() async {
       'example/features/background.feature',
       'example/features/tagged.feature',
       'example/features/outline.feature',
+      'example/features/rules.feature',
     ],
     registry: mathSteps,
     source: FileSystemSource(),
@@ -71,11 +72,6 @@ TestAdapter<void> _createTestAdapter() {
   );
 }
 
-void _testFunction(
-  String name, {
-  List<String>? tags,
-  bool skip = false,
-  Future<void> Function(void)? callback,
-}) {
+void _testFunction(String name, {List<String>? tags, bool skip = false, Future<void> Function(void)? callback}) {
   test(name, () => callback!(null), tags: tags, skip: skip);
 }

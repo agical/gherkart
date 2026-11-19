@@ -60,10 +60,7 @@ import 'scheme_resolver.dart';
 ///
 /// Uses [FeatureSource] to read the ARB file, allowing it to work
 /// with both file system and asset-based sources.
-SchemeHandler createArbTranslationHandler(
-  String arbFilePath, {
-  FeatureSource? source,
-}) {
+SchemeHandler createArbTranslationHandler(String arbFilePath, {FeatureSource? source}) {
   // Lazily load and cache the ARB file content
   Map<String, dynamic>? cachedArb;
 
@@ -92,9 +89,7 @@ SchemeHandler createArbTranslationHandler(
       );
     }
     if (value is! String) {
-      throw ArgumentError(
-        'Translation key "$key" is not a string value in $arbFilePath.',
-      );
+      throw ArgumentError('Translation key "$key" is not a string value in $arbFilePath.');
     }
     return _substitutePlaceholders(value, params);
   };

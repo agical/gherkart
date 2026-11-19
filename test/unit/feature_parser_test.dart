@@ -72,6 +72,25 @@ Feature: Home Page
         expect(feature.description, contains('I want to see'));
         expect(feature.description, contains('So that'));
       });
+
+      test('preserves multi-paragraph feature descriptions beyond the first paragraph', () {
+        const content = '''
+Feature: Multi-paragraph Description
+  First paragraph line one.
+  First paragraph line two.
+
+  Second paragraph after blank line.
+
+  Scenario: Test
+    Given something
+''';
+        final feature = parseFeature(content, 'test.feature');
+
+        expect(
+          feature.description,
+          'First paragraph line one.\nFirst paragraph line two.\n\nSecond paragraph after blank line.',
+        );
+      });
     });
 
     group('Background parsing', () {
@@ -283,366 +302,104 @@ Feature: Test
 
       expect(files.any((f) => f.contains('nested/')), isTrue);
     });
-  });
 
-  group('DataTable parsing', () {
-    test('parses data table attached to step', () {
-      const content = '''
-Feature: User Management
-  Scenario: Create users
-    Given the following users:
-      | name  | email           |
-      | Alice | alice@test.com  |
-      | Bob   | bob@test.com    |
-    When I save the users
-''';
-      final feature = parseFeature(content, 'test.feature');
+    test('discoverFeatureFiles delegates to source.list', () async {
+      final source = AssetSource.fromMap({'features/a.feature': 'Feature: A'});
 
-      final step = feature.scenarios[0].steps[0];
-      expect(step.dataTable, isNotNull);
-      expect(step.dataTable!.headers, ['name', 'email']);
-      expect(step.dataTable!.rows, hasLength(2));
-      expect(step.dataTable!.rows[0], ['Alice', 'alice@test.com']);
-      expect(step.dataTable!.rows[1], ['Bob', 'bob@test.com']);
+      final files = await discoverFeatureFiles('features', source);
+      expect(files, ['features/a.feature']);
     });
 
-    test('data table toMaps returns list of maps', () {
-      const content = '''
-Feature: Test
-  Scenario: Test
-    Given users:
-      | name  | role  |
-      | Alice | admin |
-      | Bob   | user  |
-''';
-      final feature = parseFeature(content, 'test.feature');
+    test('parseFeatureFile reads and parses feature from source', () async {
+      final source = AssetSource.fromMap({'features/sample.feature': 'Feature: Sample\nScenario: S\nGiven step'});
 
-      final maps = feature.scenarios[0].steps[0].dataTable!.toMaps();
-      expect(maps, hasLength(2));
-      expect(maps[0], {'name': 'Alice', 'role': 'admin'});
-      expect(maps[1], {'name': 'Bob', 'role': 'user'});
-    });
-
-    test('step without data table has null dataTable', () {
-      const content = '''
-Feature: Test
-  Scenario: Test
-    Given something simple
-''';
-      final feature = parseFeature(content, 'test.feature');
-
-      expect(feature.scenarios[0].steps[0].dataTable, isNull);
-    });
-
-    test('parses multiple steps with data tables', () {
-      const content = '''
-Feature: Test
-  Scenario: Test
-    Given users:
-      | name  |
-      | Alice |
-    And roles:
-      | role  |
-      | admin |
-''';
-      final feature = parseFeature(content, 'test.feature');
-
-      final steps = feature.scenarios[0].steps;
-      expect(steps[0].dataTable, isNotNull);
-      expect(steps[0].dataTable!.headers, ['name']);
-      expect(steps[1].dataTable, isNotNull);
-      expect(steps[1].dataTable!.headers, ['role']);
-    });
-
-    test('data table includes source location', () {
-      const content = '''
-Feature: Test
-  Scenario: Test
-    Given data:
-      | col |
-      | val |
-''';
-      final feature = parseFeature(content, 'test.feature');
-
-      final table = feature.scenarios[0].steps[0].dataTable!;
-      expect(table.location, isNotNull);
-      expect(table.location!.line, 4); // Line of first | row
-    });
-  });
-
-  group('DocString parsing', () {
-    test('parses doc string attached to step', () {
-      const content = '''
-Feature: API Testing
-  Scenario: Post JSON
-    Given the request body:
-      """
-      {
-        "name": "Test",
-        "value": 42
-      }
-      """
-    When I send the request
-''';
-      final feature = parseFeature(content, 'test.feature');
-
-      final step = feature.scenarios[0].steps[0];
-      expect(step.docString, isNotNull);
-      expect(step.docString!.content, contains('"name": "Test"'));
-      expect(step.docString!.content, contains('"value": 42'));
-    });
-
-    test('parses doc string with media type', () {
-      const content = '''
-Feature: Test
-  Scenario: Test
-    Given the JSON:
-      """json
-      {"key": "value"}
-      """
-''';
-      final feature = parseFeature(content, 'test.feature');
-
-      final docString = feature.scenarios[0].steps[0].docString!;
-      expect(docString.mediaType, 'json');
-      expect(docString.content, contains('"key": "value"'));
-    });
-
-    test('parses doc string with alternate delimiter', () {
-      const content = """
-Feature: Test
-  Scenario: Test
-    Given the text:
-      '''
-      Line 1
-      Line 2
-      '''
-""";
-      final feature = parseFeature(content, 'test.feature');
-
-      final docString = feature.scenarios[0].steps[0].docString!;
-      expect(docString.content, contains('Line 1'));
-      expect(docString.content, contains('Line 2'));
-    });
-
-    test('step without doc string has null docString', () {
-      const content = '''
-Feature: Test
-  Scenario: Test
-    Given something simple
-''';
-      final feature = parseFeature(content, 'test.feature');
-
-      expect(feature.scenarios[0].steps[0].docString, isNull);
-    });
-
-    test('doc string includes source location', () {
-      const content = '''
-Feature: Test
-  Scenario: Test
-    Given content:
-      """
-      text
-      """
-''';
-      final feature = parseFeature(content, 'test.feature');
-
-      final docString = feature.scenarios[0].steps[0].docString!;
-      expect(docString.location, isNotNull);
-      expect(docString.location!.line, 4); // Line of opening """
-    });
-  });
-
-  group('Scenario Outline parsing', () {
-    test('parses scenario outline with examples', () {
-      const content = '''
-Feature: Login
-  Scenario Outline: Login with credentials
-    Given I am on the login page
-    When I enter "<email>" and "<password>"
-    Then I should see "<result>"
-
-    Examples:
-      | email          | password | result    |
-      | valid@test.com | secret   | dashboard |
-      | bad@test.com   | wrong    | error     |
-''';
-      final feature = parseFeature(content, 'test.feature');
-
-      expect(feature.scenarioOutlines, hasLength(1));
-      final outline = feature.scenarioOutlines[0];
-      expect(outline.name, 'Login with credentials');
-      expect(outline.steps, hasLength(3));
-      expect(outline.examples, hasLength(1));
-      expect(outline.examples[0].headers, ['email', 'password', 'result']);
-      expect(outline.examples[0].rows, hasLength(2));
-    });
-
-    test('expands scenario outline to concrete scenarios', () {
-      const content = '''
-Feature: Math
-  Scenario Outline: Addition
-    Given I have <a>
-    When I add <b>
-    Then I get <result>
-
-    Examples:
-      | a | b | result |
-      | 1 | 2 | 3      |
-      | 5 | 5 | 10     |
-''';
-      final feature = parseFeature(content, 'test.feature');
-
-      final expanded = feature.scenarioOutlines[0].expandToScenarios();
-      expect(expanded, hasLength(2));
-      expect(expanded[0].name, contains('Addition'));
-      expect(expanded[0].name, contains('Example 1'));
-      expect(expanded[0].steps[0].text, 'I have 1');
-      expect(expanded[0].steps[1].text, 'I add 2');
-      expect(expanded[0].steps[2].text, 'I get 3');
-      expect(expanded[1].steps[0].text, 'I have 5');
-    });
-
-    test('supports {placeholder} syntax in addition to <placeholder>', () {
-      const content = '''
-Feature: Test
-  Scenario Outline: Test placeholders
-    Given value is {value}
-
-    Examples:
-      | value |
-      | 42    |
-''';
-      final feature = parseFeature(content, 'test.feature');
-
-      final expanded = feature.scenarioOutlines[0].expandToScenarios();
-      expect(expanded[0].steps[0].text, 'value is 42');
-    });
-
-    test('parses named examples table', () {
-      const content = '''
-Feature: Test
-  Scenario Outline: Test
-    Given value <v>
-
-    Examples: Valid inputs
-      | v |
-      | 1 |
-
-    Examples: Invalid inputs
-      | v  |
-      | -1 |
-''';
-      final feature = parseFeature(content, 'test.feature');
-
-      final outline = feature.scenarioOutlines[0];
-      expect(outline.examples, hasLength(2));
-      expect(outline.examples[0].name, 'Valid inputs');
-      expect(outline.examples[1].name, 'Invalid inputs');
-    });
-
-    test('expanded scenario names include example table name', () {
-      const content = '''
-Feature: Test
-  Scenario Outline: Test
-    Given value <v>
-
-    Examples: Happy path
-      | v |
-      | 1 |
-''';
-      final feature = parseFeature(content, 'test.feature');
-
-      final expanded = feature.scenarioOutlines[0].expandToScenarios();
-      expect(expanded[0].name, 'Test (Happy path #1)');
-    });
-
-    test('feature.allScenarios includes expanded outlines', () {
-      const content = '''
-Feature: Test
-  Scenario: Regular scenario
-    Given something
-
-  Scenario Outline: Outline
-    Given <v>
-
-    Examples:
-      | v |
-      | 1 |
-      | 2 |
-''';
-      final feature = parseFeature(content, 'test.feature');
-
+      final feature = await parseFeatureFile('features/sample.feature', source);
+      expect(feature.name, 'Sample');
       expect(feature.scenarios, hasLength(1));
-      expect(feature.scenarioOutlines, hasLength(1));
-      expect(feature.allScenarios, hasLength(3)); // 1 regular + 2 expanded
+    });
+  });
+
+  group('Feature model helper methods and representations', () {
+    test('handles empty or comment-only content gracefully', () {
+      final feature = parseFeature('# Just a comment\n', 'empty.feature');
+      expect(feature.name, 'Unnamed Feature');
+      expect(feature.scenarios, isEmpty);
     });
 
-    test('parses Scenario Template as alias for Scenario Outline', () {
-      const content = '''
-Feature: Test
-  Scenario Template: Template test
-    Given <v>
+    test('Feature and Scenario toString representations', () {
+      final feature = Feature(
+        name: 'My Feature',
+        filePath: 'test.feature',
+        scenarios: [
+          Scenario(name: 'Scenario 1', steps: []),
+          Scenario(name: 'Scenario 2', steps: []),
+        ],
+        scenarioOutlines: [ScenarioOutline(name: 'Outline 1', steps: [], examples: [])],
+      );
 
-    Examples:
-      | v |
-      | x |
-''';
-      final feature = parseFeature(content, 'test.feature');
-
-      expect(feature.scenarioOutlines, hasLength(1));
-      expect(feature.scenarioOutlines[0].name, 'Template test');
+      expect(feature.toString(), 'Feature(My Feature, 2 scenarios, 1 outlines)');
+      expect(feature.scenarios[0].toString(), 'Scenario(Scenario 1, 0 steps)');
     });
 
-    test('parses tags on scenario outline', () {
-      const content = '''
-Feature: Test
-  @smoke
-  Scenario Outline: Tagged outline
-    Given <v>
+    test('Step.copyWith and Step.toString', () {
+      final step = Step(
+        keyword: StepKeyword.given,
+        text: 'original text',
+        location: SourceLocation(filePath: 'test.feature', line: 10),
+      );
 
-    Examples:
-      | v |
-      | 1 |
-''';
-      final feature = parseFeature(content, 'test.feature');
+      expect(step.toString(), 'Given original text');
 
-      expect(feature.scenarioOutlines[0].tags, contains('smoke'));
+      final copied = step.copyWith(keyword: StepKeyword.when, text: 'updated text');
+
+      expect(copied.keyword, StepKeyword.when);
+      expect(copied.text, 'updated text');
+      expect(copied.location?.line, 10);
+      expect(copied.toString(), 'When updated text');
     });
 
-    test('parses tags on examples table', () {
-      const content = '''
-Feature: Test
-  Scenario Outline: Test
-    Given <v>
+    test('DataTable.allRows and DataTable.toString', () {
+      final table = DataTable(
+        headers: ['h1', 'h2'],
+        rows: [
+          ['v1', 'v2'],
+        ],
+      );
 
-    @slow
-    Examples: Slow tests
-      | v |
-      | 1 |
-''';
-      final feature = parseFeature(content, 'test.feature');
-
-      expect(feature.scenarioOutlines[0].examples[0].tags, contains('slow'));
+      expect(table.toString(), 'DataTable(2 cols, 1 rows)');
+      expect(table.allRows, [
+        ['h1', 'h2'],
+        ['v1', 'v2'],
+      ]);
     });
 
-    test('expanded scenarios inherit outline and example tags', () {
-      const content = '''
-Feature: Test
-  @outline-tag
-  Scenario Outline: Test
-    Given <v>
+    test('DocString.toString representation', () {
+      final docString = DocString(content: 'hello', mediaType: 'json');
+      expect(docString.toString(), 'DocString(json, 5 chars)');
 
-    @example-tag
-    Examples:
-      | v |
-      | 1 |
-''';
-      final feature = parseFeature(content, 'test.feature');
+      final defaultDocString = DocString(content: 'text');
+      expect(defaultDocString.toString(), 'DocString(text, 4 chars)');
+    });
 
-      final expanded = feature.scenarioOutlines[0].expandToScenarios();
-      expect(expanded[0].tags, contains('outline-tag'));
-      expect(expanded[0].tags, contains('example-tag'));
+    test('ScenarioOutline and ExampleTable toString representations', () {
+      final table = ExampleTable(
+        name: 'Valid',
+        headers: ['a', 'b'],
+        rows: [
+          ['1', '2'],
+        ],
+      );
+      expect(table.toString(), 'ExampleTable(Valid, 2 cols, 1 rows)');
+
+      final unnamedTable = ExampleTable(headers: ['x'], rows: []);
+      expect(unnamedTable.toString(), 'ExampleTable(unnamed, 1 cols, 0 rows)');
+
+      final outline = ScenarioOutline(
+        name: 'Test Outline',
+        steps: [Step(keyword: StepKeyword.given, text: 'step')],
+        examples: [table],
+      );
+      expect(outline.toString(), 'ScenarioOutline(Test Outline, 1 steps, 1 examples)');
     });
   });
 }

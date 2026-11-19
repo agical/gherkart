@@ -158,6 +158,14 @@ void main() {
         expect(result, isNotNull);
         expect(result, ['Hello', 'World']);
       });
+
+      test('returns null instead of throwing when int or double conversion fails', () {
+        final intMapper = 'I see {count} items'.mapper(types: {'count': int});
+        final doubleMapper = 'score is {val}'.mapper(types: {'val': double});
+
+        expect(intMapper('I see "no" items'), isNull);
+        expect(doubleMapper('score is pending'), isNull);
+      });
     });
   });
 }

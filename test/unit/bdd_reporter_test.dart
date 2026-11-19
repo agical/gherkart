@@ -12,9 +12,7 @@ void main() {
     group('ContinuousReporter', () {
       test('reports events immediately as they occur', () async {
         final events = <String>[];
-        final reporter = ContinuousReporter(
-          onEvent: (event) => events.add(event.toString()),
-        );
+        final reporter = ContinuousReporter(onEvent: (event) => events.add(event.toString()));
 
         reporter.onFeatureStart(ReportFeature(name: 'Feature 1', path: 'a.feature'));
         reporter.onScenarioStart(ReportScenario(name: 'Scenario A', tags: []));
@@ -23,14 +21,8 @@ void main() {
           ReportStep(keyword: 'Given', text: 'something'),
           StepResult.passed(Duration(milliseconds: 100)),
         );
-        reporter.onScenarioComplete(
-          ReportScenario(name: 'Scenario A', tags: []),
-          ScenarioResult.passed(),
-        );
-        reporter.onFeatureComplete(
-          ReportFeature(name: 'Feature 1', path: 'a.feature'),
-          FeatureResult.passed(),
-        );
+        reporter.onScenarioComplete(ReportScenario(name: 'Scenario A', tags: []), ScenarioResult.passed());
+        reporter.onFeatureComplete(ReportFeature(name: 'Feature 1', path: 'a.feature'), FeatureResult.passed());
 
         expect(events.length, 6);
         expect(events[0], contains('Feature 1'));
@@ -45,9 +37,7 @@ void main() {
     group('BufferedReporter', () {
       test('collects events and reports only at the end', () async {
         final reports = <String>[];
-        final reporter = BufferedReporter(
-          onComplete: (results) => reports.add(results.toString()),
-        );
+        final reporter = BufferedReporter(onComplete: (results) => reports.add(results.toString()));
 
         reporter.onFeatureStart(ReportFeature(name: 'Feature 1', path: 'a.feature'));
         reporter.onScenarioStart(ReportScenario(name: 'Scenario A', tags: []));
@@ -55,14 +45,8 @@ void main() {
           ReportStep(keyword: 'Given', text: 'something'),
           StepResult.passed(Duration(milliseconds: 100)),
         );
-        reporter.onScenarioComplete(
-          ReportScenario(name: 'Scenario A', tags: []),
-          ScenarioResult.passed(),
-        );
-        reporter.onFeatureComplete(
-          ReportFeature(name: 'Feature 1', path: 'a.feature'),
-          FeatureResult.passed(),
-        );
+        reporter.onScenarioComplete(ReportScenario(name: 'Scenario A', tags: []), ScenarioResult.passed());
+        reporter.onFeatureComplete(ReportFeature(name: 'Feature 1', path: 'a.feature'), FeatureResult.passed());
 
         // Nothing reported yet
         expect(reports, isEmpty);
@@ -78,23 +62,12 @@ void main() {
     group('SummaryReporter', () {
       test('reports only counts at the end', () async {
         final summaries = <String>[];
-        final reporter = SummaryReporter(
-          onSummary: (summary) => summaries.add(summary.toString()),
-        );
+        final reporter = SummaryReporter(onSummary: (summary) => summaries.add(summary.toString()));
 
         reporter.onFeatureStart(ReportFeature(name: 'Feature 1', path: 'a.feature'));
-        reporter.onScenarioComplete(
-          ReportScenario(name: 'Scenario A', tags: []),
-          ScenarioResult.passed(),
-        );
-        reporter.onScenarioComplete(
-          ReportScenario(name: 'Scenario B', tags: []),
-          ScenarioResult.failed('Error'),
-        );
-        reporter.onFeatureComplete(
-          ReportFeature(name: 'Feature 1', path: 'a.feature'),
-          FeatureResult.mixed(),
-        );
+        reporter.onScenarioComplete(ReportScenario(name: 'Scenario A', tags: []), ScenarioResult.passed());
+        reporter.onScenarioComplete(ReportScenario(name: 'Scenario B', tags: []), ScenarioResult.failed('Error'));
+        reporter.onFeatureComplete(ReportFeature(name: 'Feature 1', path: 'a.feature'), FeatureResult.mixed());
 
         // Nothing yet
         expect(summaries, isEmpty);
@@ -112,12 +85,8 @@ void main() {
         final events1 = <String>[];
         final events2 = <String>[];
 
-        final reporter1 = ContinuousReporter(
-          onEvent: (event) => events1.add(event.toString()),
-        );
-        final reporter2 = ContinuousReporter(
-          onEvent: (event) => events2.add(event.toString()),
-        );
+        final reporter1 = ContinuousReporter(onEvent: (event) => events1.add(event.toString()));
+        final reporter2 = ContinuousReporter(onEvent: (event) => events2.add(event.toString()));
 
         final composite = CompositeReporter([reporter1, reporter2]);
 
@@ -144,11 +113,7 @@ void main() {
 
     group('ReportFeature', () {
       test('holds feature metadata', () {
-        final feature = ReportFeature(
-          name: 'My Feature',
-          path: 'features/my.feature',
-          tags: ['@smoke', '@api'],
-        );
+        final feature = ReportFeature(name: 'My Feature', path: 'features/my.feature', tags: ['@smoke', '@api']);
 
         expect(feature.name, 'My Feature');
         expect(feature.path, 'features/my.feature');
@@ -176,12 +141,7 @@ void main() {
 
     group('ReportStep', () {
       test('holds step metadata', () {
-        final step = ReportStep(
-          keyword: 'Given',
-          text: 'I have a value',
-          hasTable: true,
-          hasDocString: false,
-        );
+        final step = ReportStep(keyword: 'Given', text: 'I have a value', hasTable: true, hasDocString: false);
 
         expect(step.keyword, 'Given');
         expect(step.text, 'I have a value');
@@ -200,10 +160,7 @@ void main() {
       });
 
       test('failed result', () {
-        final result = StepResult.failed(
-          Duration(milliseconds: 50),
-          'Something went wrong',
-        );
+        final result = StepResult.failed(Duration(milliseconds: 50), 'Something went wrong');
 
         expect(result.status, StepStatus.failed);
         expect(result.duration, Duration(milliseconds: 50));
@@ -260,22 +217,13 @@ void main() {
       test('creates markdown file for each feature', () async {
         final reporter = MarkdownFileReporter(outputDir: tempDir.path);
 
-        reporter.onFeatureStart(ReportFeature(
-          name: 'User Authentication',
-          path: 'auth.feature',
-        ));
-        reporter.onScenarioStart(ReportScenario(
-          name: 'Valid Login',
-          tags: [],
-        ));
+        reporter.onFeatureStart(ReportFeature(name: 'User Authentication', path: 'auth.feature'));
+        reporter.onScenarioStart(ReportScenario(name: 'Valid Login', tags: []));
         reporter.onStepComplete(
           ReportStep(keyword: 'Given', text: 'I am on login page'),
           StepResult.passed(Duration.zero),
         );
-        reporter.onScenarioComplete(
-          ReportScenario(name: 'Valid Login', tags: []),
-          ScenarioResult.passed(),
-        );
+        reporter.onScenarioComplete(ReportScenario(name: 'Valid Login', tags: []), ScenarioResult.passed());
         reporter.onFeatureComplete(
           ReportFeature(name: 'User Authentication', path: 'auth.feature'),
           FeatureResult.passed(),
@@ -295,10 +243,7 @@ void main() {
       test('creates subdirectories mirroring feature file paths', () async {
         final reporter = MarkdownFileReporter(outputDir: tempDir.path);
 
-        reporter.onFeatureStart(ReportFeature(
-          name: 'Session Management',
-          path: 'features/session/management.feature',
-        ));
+        reporter.onFeatureStart(ReportFeature(name: 'Session Management', path: 'features/session/management.feature'));
         reporter.onFeatureComplete(
           ReportFeature(name: 'Session Management', path: 'features/session/management.feature'),
           FeatureResult.passed(),
@@ -314,16 +259,10 @@ void main() {
         final reporter = MarkdownFileReporter(outputDir: tempDir.path);
 
         reporter.onFeatureStart(ReportFeature(name: 'Login', path: 'auth/login.feature'));
-        reporter.onFeatureComplete(
-          ReportFeature(name: 'Login', path: 'auth/login.feature'),
-          FeatureResult.passed(),
-        );
+        reporter.onFeatureComplete(ReportFeature(name: 'Login', path: 'auth/login.feature'), FeatureResult.passed());
 
         reporter.onFeatureStart(ReportFeature(name: 'Logout', path: 'auth/logout.feature'));
-        reporter.onFeatureComplete(
-          ReportFeature(name: 'Logout', path: 'auth/logout.feature'),
-          FeatureResult.passed(),
-        );
+        reporter.onFeatureComplete(ReportFeature(name: 'Logout', path: 'auth/logout.feature'), FeatureResult.passed());
 
         reporter.flush();
 
@@ -347,16 +286,10 @@ void main() {
         await existingFile.create(recursive: true);
         await existingFile.writeAsString('old content');
 
-        final reporter = MarkdownFileReporter(
-          outputDir: tempDir.path,
-          cleanFirst: true,
-        );
+        final reporter = MarkdownFileReporter(outputDir: tempDir.path, cleanFirst: true);
 
         reporter.onFeatureStart(ReportFeature(name: 'New', path: 'new.feature'));
-        reporter.onFeatureComplete(
-          ReportFeature(name: 'New', path: 'new.feature'),
-          FeatureResult.passed(),
-        );
+        reporter.onFeatureComplete(ReportFeature(name: 'New', path: 'new.feature'), FeatureResult.passed());
         reporter.flush();
 
         expect(await existingFile.exists(), isFalse);
@@ -367,18 +300,9 @@ void main() {
 
         reporter.onFeatureStart(ReportFeature(name: 'Test', path: 'test.feature'));
         reporter.onScenarioStart(ReportScenario(name: 'Passing Test', tags: []));
-        reporter.onStepComplete(
-          ReportStep(keyword: 'Given', text: 'something'),
-          StepResult.passed(Duration.zero),
-        );
-        reporter.onScenarioComplete(
-          ReportScenario(name: 'Passing Test', tags: []),
-          ScenarioResult.passed(),
-        );
-        reporter.onFeatureComplete(
-          ReportFeature(name: 'Test', path: 'test.feature'),
-          FeatureResult.passed(),
-        );
+        reporter.onStepComplete(ReportStep(keyword: 'Given', text: 'something'), StepResult.passed(Duration.zero));
+        reporter.onScenarioComplete(ReportScenario(name: 'Passing Test', tags: []), ScenarioResult.passed());
+        reporter.onFeatureComplete(ReportFeature(name: 'Test', path: 'test.feature'), FeatureResult.passed());
         reporter.flush();
 
         final content = await File('${tempDir.path}/features/test.md').readAsString();
@@ -396,14 +320,8 @@ void main() {
           ReportStep(keyword: 'Then', text: 'bad step'),
           StepResult.failed(Duration.zero, 'error'),
         );
-        reporter.onScenarioComplete(
-          ReportScenario(name: 'Failing Test', tags: []),
-          ScenarioResult.failed('error'),
-        );
-        reporter.onFeatureComplete(
-          ReportFeature(name: 'Test', path: 'test.feature'),
-          FeatureResult.failed(),
-        );
+        reporter.onScenarioComplete(ReportScenario(name: 'Failing Test', tags: []), ScenarioResult.failed('error'));
+        reporter.onFeatureComplete(ReportFeature(name: 'Test', path: 'test.feature'), FeatureResult.failed());
         reporter.flush();
 
         final content = await File('${tempDir.path}/features/test.md').readAsString();
@@ -416,18 +334,12 @@ void main() {
         final reporter = MarkdownFileReporter(outputDir: tempDir.path);
 
         reporter.onFeatureStart(ReportFeature(name: 'Tagged', path: 'tagged.feature'));
-        reporter.onScenarioStart(ReportScenario(
-          name: 'Tagged Scenario',
-          tags: ['@smoke', '@regression'],
-        ));
+        reporter.onScenarioStart(ReportScenario(name: 'Tagged Scenario', tags: ['@smoke', '@regression']));
         reporter.onScenarioComplete(
           ReportScenario(name: 'Tagged Scenario', tags: ['@smoke', '@regression']),
           ScenarioResult.passed(),
         );
-        reporter.onFeatureComplete(
-          ReportFeature(name: 'Tagged', path: 'tagged.feature'),
-          FeatureResult.passed(),
-        );
+        reporter.onFeatureComplete(ReportFeature(name: 'Tagged', path: 'tagged.feature'), FeatureResult.passed());
         reporter.flush();
 
         final content = await File('${tempDir.path}/features/tagged.md').readAsString();
@@ -438,10 +350,7 @@ void main() {
       test('converts feature name to filename', () async {
         final reporter = MarkdownFileReporter(outputDir: tempDir.path);
 
-        reporter.onFeatureStart(ReportFeature(
-          name: 'User Can Log In Successfully',
-          path: 'user_login.feature',
-        ));
+        reporter.onFeatureStart(ReportFeature(name: 'User Can Log In Successfully', path: 'user_login.feature'));
         reporter.onFeatureComplete(
           ReportFeature(name: 'User Can Log In Successfully', path: 'user_login.feature'),
           FeatureResult.passed(),
@@ -497,30 +406,21 @@ void main() {
       });
 
       test('creates file reporter with output dir', () {
-        final config = ReporterConfig(
-          mode: ReportMode.file,
-          outputDir: '/tmp/reports',
-        );
+        final config = ReporterConfig(mode: ReportMode.file, outputDir: '/tmp/reports');
         final reporter = config.createReporter();
 
         expect(reporter, isA<MarkdownFileReporter>());
       });
 
       test('creates composite reporter for multiple modes', () {
-        final config = ReporterConfig(
-          modes: [ReportMode.continuous, ReportMode.file],
-          outputDir: '/tmp/reports',
-        );
+        final config = ReporterConfig(modes: [ReportMode.continuous, ReportMode.file], outputDir: '/tmp/reports');
         final reporter = config.createReporter();
 
         expect(reporter, isA<CompositeReporter>());
       });
 
       test('throws when file mode used without outputDir', () {
-        expect(
-          () => ReporterConfig(mode: ReportMode.file).createReporter(),
-          throwsArgumentError,
-        );
+        expect(() => ReporterConfig(mode: ReportMode.file).createReporter(), throwsArgumentError);
       });
     });
 
@@ -529,9 +429,7 @@ void main() {
         final output = StringBuffer();
         final reporter = PrintingReporter(sink: output);
 
-        reporter.onFeatureStart(
-          ReportFeature(name: 'User Login', path: 'features/login.feature'),
-        );
+        reporter.onFeatureStart(ReportFeature(name: 'User Login', path: 'features/login.feature'));
 
         expect(output.toString(), contains('Feature: User Login'));
       });
@@ -540,9 +438,7 @@ void main() {
         final output = StringBuffer();
         final reporter = PrintingReporter(sink: output);
 
-        reporter.onScenarioStart(
-          ReportScenario(name: 'Valid credentials', tags: []),
-        );
+        reporter.onScenarioStart(ReportScenario(name: 'Valid credentials', tags: []));
 
         expect(output.toString(), contains('Scenario: Valid credentials'));
       });
@@ -577,10 +473,7 @@ void main() {
         final output = StringBuffer();
         final reporter = PrintingReporter(sink: output);
 
-        reporter.onStepComplete(
-          ReportStep(keyword: 'Then', text: 'I see dashboard'),
-          StepResult.skipped(),
-        );
+        reporter.onStepComplete(ReportStep(keyword: 'Then', text: 'I see dashboard'), StepResult.skipped());
 
         expect(output.toString(), contains('-'));
         expect(output.toString(), contains('Then I see dashboard'));
@@ -590,12 +483,8 @@ void main() {
         final output = StringBuffer();
         final reporter = PrintingReporter(sink: output);
 
-        reporter.onFeatureStart(
-          ReportFeature(name: 'Login', path: 'login.feature'),
-        );
-        reporter.onScenarioStart(
-          ReportScenario(name: 'Valid login', tags: []),
-        );
+        reporter.onFeatureStart(ReportFeature(name: 'Login', path: 'login.feature'));
+        reporter.onScenarioStart(ReportScenario(name: 'Valid login', tags: []));
 
         final lines = output.toString().split('\n');
         final featureLine = lines.firstWhere((l) => l.contains('Feature:'));
@@ -610,13 +499,8 @@ void main() {
         final output = StringBuffer();
         final reporter = PrintingReporter(sink: output);
 
-        reporter.onScenarioStart(
-          ReportScenario(name: 'Test', tags: []),
-        );
-        reporter.onStepComplete(
-          ReportStep(keyword: 'Given', text: 'something'),
-          StepResult.passed(Duration.zero),
-        );
+        reporter.onScenarioStart(ReportScenario(name: 'Test', tags: []));
+        reporter.onStepComplete(ReportStep(keyword: 'Given', text: 'something'), StepResult.passed(Duration.zero));
 
         final lines = output.toString().split('\n');
         final scenarioLine = lines.firstWhere((l) => l.contains('Scenario:'));
@@ -632,12 +516,7 @@ void main() {
         // When no sink provided, should print to console (not throw)
         final reporter = PrintingReporter();
 
-        expect(
-          () => reporter.onFeatureStart(
-            ReportFeature(name: 'Test', path: 'test.feature'),
-          ),
-          returnsNormally,
-        );
+        expect(() => reporter.onFeatureStart(ReportFeature(name: 'Test', path: 'test.feature')), returnsNormally);
       });
 
       test('flushes without error', () {
@@ -656,24 +535,11 @@ void main() {
           writer: (path, content) => written[path] = content,
         );
 
-        reporter.onFeatureStart(
-          ReportFeature(name: 'Login', path: 'login.feature'),
-        );
-        reporter.onScenarioStart(
-          ReportScenario(name: 'Valid login', tags: []),
-        );
-        reporter.onStepComplete(
-          ReportStep(keyword: 'Given', text: 'a user'),
-          StepResult.passed(Duration.zero),
-        );
-        reporter.onScenarioComplete(
-          ReportScenario(name: 'Valid login', tags: []),
-          ScenarioResult.passed(),
-        );
-        reporter.onFeatureComplete(
-          ReportFeature(name: 'Login', path: 'login.feature'),
-          FeatureResult.passed(),
-        );
+        reporter.onFeatureStart(ReportFeature(name: 'Login', path: 'login.feature'));
+        reporter.onScenarioStart(ReportScenario(name: 'Valid login', tags: []));
+        reporter.onStepComplete(ReportStep(keyword: 'Given', text: 'a user'), StepResult.passed(Duration.zero));
+        reporter.onScenarioComplete(ReportScenario(name: 'Valid login', tags: []), ScenarioResult.passed());
+        reporter.onFeatureComplete(ReportFeature(name: 'Login', path: 'login.feature'), FeatureResult.passed());
 
         reporter.flush();
 
@@ -684,27 +550,13 @@ void main() {
 
       test('writes markdown with passed step checkmarks', () {
         final written = <String, String>{};
-        final reporter = FileReporter(
-          outputPath: 'report.md',
-          writer: (path, content) => written[path] = content,
-        );
+        final reporter = FileReporter(outputPath: 'report.md', writer: (path, content) => written[path] = content);
 
-        reporter.onFeatureStart(
-          ReportFeature(name: 'Feature', path: 'f.feature'),
-        );
+        reporter.onFeatureStart(ReportFeature(name: 'Feature', path: 'f.feature'));
         reporter.onScenarioStart(ReportScenario(name: 'Scenario', tags: []));
-        reporter.onStepComplete(
-          ReportStep(keyword: 'Given', text: 'something'),
-          StepResult.passed(Duration.zero),
-        );
-        reporter.onScenarioComplete(
-          ReportScenario(name: 'Scenario', tags: []),
-          ScenarioResult.passed(),
-        );
-        reporter.onFeatureComplete(
-          ReportFeature(name: 'Feature', path: 'f.feature'),
-          FeatureResult.passed(),
-        );
+        reporter.onStepComplete(ReportStep(keyword: 'Given', text: 'something'), StepResult.passed(Duration.zero));
+        reporter.onScenarioComplete(ReportScenario(name: 'Scenario', tags: []), ScenarioResult.passed());
+        reporter.onFeatureComplete(ReportFeature(name: 'Feature', path: 'f.feature'), FeatureResult.passed());
         reporter.flush();
 
         expect(written['report.md'], contains('✓'));
@@ -713,27 +565,16 @@ void main() {
 
       test('writes markdown with failed step info', () {
         final written = <String, String>{};
-        final reporter = FileReporter(
-          outputPath: 'report.md',
-          writer: (path, content) => written[path] = content,
-        );
+        final reporter = FileReporter(outputPath: 'report.md', writer: (path, content) => written[path] = content);
 
-        reporter.onFeatureStart(
-          ReportFeature(name: 'Feature', path: 'f.feature'),
-        );
+        reporter.onFeatureStart(ReportFeature(name: 'Feature', path: 'f.feature'));
         reporter.onScenarioStart(ReportScenario(name: 'Scenario', tags: []));
         reporter.onStepComplete(
           ReportStep(keyword: 'When', text: 'it fails'),
           StepResult.failed(Duration.zero, 'Error message'),
         );
-        reporter.onScenarioComplete(
-          ReportScenario(name: 'Scenario', tags: []),
-          ScenarioResult.failed('Error'),
-        );
-        reporter.onFeatureComplete(
-          ReportFeature(name: 'Feature', path: 'f.feature'),
-          FeatureResult.failed(),
-        );
+        reporter.onScenarioComplete(ReportScenario(name: 'Scenario', tags: []), ScenarioResult.failed('Error'));
+        reporter.onFeatureComplete(ReportFeature(name: 'Feature', path: 'f.feature'), FeatureResult.failed());
         reporter.flush();
 
         expect(written['report.md'], contains('✗'));
@@ -742,27 +583,13 @@ void main() {
 
       test('includes summary at end of file', () {
         final written = <String, String>{};
-        final reporter = FileReporter(
-          outputPath: 'report.md',
-          writer: (path, content) => written[path] = content,
-        );
+        final reporter = FileReporter(outputPath: 'report.md', writer: (path, content) => written[path] = content);
 
-        reporter.onFeatureStart(
-          ReportFeature(name: 'Feature1', path: 'f1.feature'),
-        );
+        reporter.onFeatureStart(ReportFeature(name: 'Feature1', path: 'f1.feature'));
         reporter.onScenarioStart(ReportScenario(name: 'Scenario1', tags: []));
-        reporter.onStepComplete(
-          ReportStep(keyword: 'Given', text: 'a'),
-          StepResult.passed(Duration.zero),
-        );
-        reporter.onScenarioComplete(
-          ReportScenario(name: 'Scenario1', tags: []),
-          ScenarioResult.passed(),
-        );
-        reporter.onFeatureComplete(
-          ReportFeature(name: 'Feature1', path: 'f1.feature'),
-          FeatureResult.passed(),
-        );
+        reporter.onStepComplete(ReportStep(keyword: 'Given', text: 'a'), StepResult.passed(Duration.zero));
+        reporter.onScenarioComplete(ReportScenario(name: 'Scenario1', tags: []), ScenarioResult.passed());
+        reporter.onFeatureComplete(ReportFeature(name: 'Feature1', path: 'f1.feature'), FeatureResult.passed());
         reporter.flush();
 
         expect(written['report.md'], contains('Summary'));

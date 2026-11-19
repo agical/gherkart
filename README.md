@@ -1,4 +1,9 @@
+<p align="center">
+  <img src="assets/gherkart_driver_and_logo.png" alt="Gherkart driver" width="400">
+</p>
+
 # Gherkart
+
 
 A lightweight, runtime BDD framework for Dart and Flutter testing.
 Parse Gherkin `.feature` files at runtime — no code generation required.
@@ -10,11 +15,17 @@ Parse Gherkin `.feature` files at runtime — no code generation required.
 | Feature | Description |
 |---------|-------------|
 | Scenarios & Background | `Scenario:`, `Background:` with Given / When / Then steps |
-| Scenario Outlines | `Scenario Outline:` with `Examples:` tables (`<param>` and `{param}` syntax) |
-| Data Tables | Step-attached structured tables |
-| Doc Strings | Multi-line `"""` text blocks on steps |
-| Tags | `@smoke`, `@wip`, `@slow` etc. with feature → scenario inheritance |
-| Missing step detection | Reports unregistered steps with source locations |
+| Rules & Scenarios | `Rule:` sections for grouping scenarios with rule-level backgrounds |
+| Scenario Outlines | `Scenario Outline:` / `Scenario Template:` with `Examples:` / `Scenarios:` tables (`<param>` syntax) |
+| Synonyms & Bullets | `Example:` as synonym for `Scenario:`, bullet steps (`*`) for Given / When / Then |
+| Internationalization | Native 70+ languages via `# language: <lang>` headers |
+| Data Tables | Step-attached structured tables with pipe escaping (`\|`) and empty cells |
+| Doc Strings | Multi-line text blocks with triple double-quotes (`"""`) or backticks (```` ``` ````) |
+| Tags | `@smoke`, `@wip`, `@slow` etc. with feature/rule → scenario inheritance |
+| Cucumber Expressions | Official `{int}`, `{float}`, `{string}`, `{word}`, custom `ParameterType`s, `apple(s)`, `is/are`, & `RegExp` |
+| Parse diagnostics | Real line and column error reporting via `GherkinParseException` |
+| Cucumber Messages (NDJSON) | Standard `NdjsonReporter` & `NdjsonFileReporter` compatible with Cucumber HTML/JSON/JUnit formatters |
+| Missing step detection | Reports unregistered steps with source locations & official expression snippet generation |
 
 ### Gherkart Improvements
 
@@ -28,7 +39,7 @@ Parse Gherkin `.feature` files at runtime — no code generation required.
 | Scheme resolution | `{t:translationKey}` parameter schemes for i18n and key lookup |
 | Translation handlers | ARB file, map, or function-based lookup with parameterized values |
 | Configurable output | Silent → scenario names → steps → verbose with timing |
-| Reporting system | `SummaryReporter`, `BufferedReporter`, `MarkdownFileReporter`, composable |
+| Reporting system | `SummaryReporter`, `BufferedReporter`, `MarkdownFileReporter`, `NdjsonReporter`, composable |
 | Test structure | Tree (nested by directory) or flat grouping |
 | Lifecycle hooks | `beforeAll`, `afterAll`, `beforeEach`, `afterEach` with tag access |
 
@@ -127,7 +138,7 @@ void main() async {
 
 ## Gherkin Parser
 
-The parser supports the full Gherkin syntax relevant to testing.
+The parser is powered by official Cucumber parser and compiler packages (`cucumber_gherkin` and `cucumber_messages`), supporting standard Gherkin syntax.
 
 ### Scenarios & Background
 
@@ -145,7 +156,33 @@ Feature: Background Demo
     Then the result is 15
 ```
 
-Background steps are prepended to every scenario in the feature.
+Background steps run before each scenario in the feature.
+
+### Rules & Scenarios
+
+> Example: [example/features/rules.feature](example/features/rules.feature)
+
+```gherkin
+Feature: Rules Demo
+
+  Rule: Identity with zero
+    Example: Adding zero keeps number unchanged
+      * I have the number 42
+      * I add 0
+      Then the result is 42
+
+  Rule: Addition with offset
+    Background:
+      * I have the number 10
+
+    Scenario: Add positive offset
+      * I add 5
+      Then the result is 15
+```
+
+- `Rule:` groups scenarios under business rules and can contain its own `Background:`. Rule-level background steps are prepended to each scenario in that rule.
+- `Example:` can be used interchangeably with `Scenario:`.
+- `*` (asterisk/bullet) can be used for any step keyword (`Given`, `When`, `Then`, `And`, `But`).
 
 ### Scenario Outlines
 
@@ -168,7 +205,37 @@ Scenario Outline: Addition with examples
     | 999 | 1   | 1000 |
 ```
 
-Each example row becomes a separate test case. Both `<placeholder>` and `{placeholder}` syntax are supported in step text.
+Each example row becomes a separate test case. Standard Gherkin `<placeholder>` syntax is used.
+`Scenario Template:` and `Scenarios:` are also supported as official synonyms.
+
+> **Migration Note:** Legacy `{placeholder}` syntax in Scenario Outlines is automatically converted with a deprecation warning and exact `grep` and `sed` commands to update your feature files.
+
+### Multi-Language (i18n)
+
+> Example: [example/features/i18n.feature](example/features/i18n.feature) +
+> [example/i18n_test.dart](example/i18n_test.dart)
+
+Add a `# language: <locale>` comment at the top of the feature file to write features in 70+ languages supported by Cucumber:
+
+```gherkin
+# language: fr
+Fonctionnalité: Démo multilingue
+  Règle: L'addition simple
+    Exemple: Additionner deux entiers
+      * J'ai le nombre 10
+      Quand J'ajoute 5
+      Alors le résultat est 15
+```
+
+Step definitions match the step text in that language:
+
+```dart
+final steps = StepRegistry<void>.fromMap({
+  "J'ai le nombre {n}".mapper(types: {'n': int}): ($, ctx) async { ... },
+  "J'ajoute {n}".mapper(types: {'n': int}): ($, ctx) async { ... },
+  'le résultat est {expected}'.mapper(types: {'expected': int}): ($, ctx) async { ... },
+});
+```
 
 ### Data Tables
 
@@ -186,7 +253,7 @@ Scenario: Add items from a table
   Then the total quantity is 10
 ```
 
-Access in step code via `ctx.tableRows`:
+Data tables support escaped pipes (`\|`) within cell content and empty cells. Access in step code via `ctx.tableRows`:
 
 ```dart
 'I add items:'.mapper(): ($, ctx) async {
@@ -202,6 +269,8 @@ Access in step code via `ctx.tableRows`:
 
 > Example: [example/features/doc_strings.feature](example/features/doc_strings.feature) +
 > [example/data_tables_test.dart](example/data_tables_test.dart)
+
+Doc strings can use either triple double-quotes (`"""`) or backticks (```` ``` ````), with optional media type tags:
 
 ```gherkin
 Scenario: Parse JSON configuration
@@ -253,9 +322,44 @@ Feature: Tagged Feature Demo
 
 > Example: [example/demo_test.dart](example/demo_test.dart)
 
-### Pattern Matching
+### Cucumber Expressions & Fluent Registration
 
-Steps are matched by pattern with `{param}` placeholders:
+Powered by official `cucumber_expressions`, step definitions support typed `{int}`, `{float}`, `{string}`, `{word}`, and anonymous `{}` parameters, optional text `apple(s)`, alternatives `is/are`, custom `ParameterType`s, and `RegExp` patterns:
+
+```dart
+final steps = StepRegistry<void>()
+  ..given('there is/are {int} cucumber(s)', ($, ctx) async {
+    _state.count = ctx.arg<int>(0);
+  })
+  ..when('I eat {int} cucumber(s) from {string}', ($, ctx) async {
+    _state.count -= ctx.arg<int>(0);
+    _state.source = ctx.arg<String>(1); // quotes stripped automatically
+  })
+  ..regex(RegExp(r'^I wait (\d+)ms$'), ($, ctx) async {
+    await Future<void>.delayed(Duration(milliseconds: ctx.arg<int>(0)));
+  });
+```
+
+You can also use `.cucumber()` inside `StepRegistry.fromMap` or register custom parameter types:
+
+```dart
+final registry = StepRegistry<void>()
+  ..defineParameterType(
+    ParameterType<Flight>(
+      'flight',
+      RegExp(r'([A-Z]{3})-([A-Z]{3})'),
+      'Flight',
+      (groups) => Flight(groups[0]!, groups[1]!),
+    ),
+  )
+  ..given('{flight} has been delayed', ($, ctx) async {
+    final flight = ctx.arg<Flight>(0);
+  });
+```
+
+### Named-Placeholder `.mapper()` Patterns
+
+Existing named-placeholder patterns via `String.mapper()` continue to work alongside Cucumber Expressions:
 
 ```dart
 final mathSteps = StepRegistry<void>.fromMap({
@@ -271,16 +375,7 @@ final mathSteps = StepRegistry<void>.fromMap({
 });
 ```
 
-### Typed Parameters
-
-The `.mapper()` extension accepts a `types` map for automatic conversion:
-
-| Type     | Example input | Parsed as       |
-|----------|---------------|-----------------|
-| `String` | `"hello"`     | `'hello'`       |
-| `int`    | `42`          | `42`            |
-| `double` | `3.14`        | `3.14`          |
-| `bool`   | `true`        | `true`          |
+The `.mapper()` extension accepts an optional `types` map for conversion (`String`, `int`, `double`, `bool`).
 
 ### Merging Registries
 
@@ -609,6 +704,39 @@ Reporters collect structured results from test execution for post-processing.
 | `SummaryReporter`      | Prints pass/fail/skip counts                     |
 | `CompositeReporter`    | Combines multiple reporters                      |
 | `MarkdownFileReporter` | Writes per-feature Markdown files with results   |
+| `NdjsonReporter`       | Emits Cucumber Messages NDJSON to sink/callbacks (web & `FakeAsync`-safe) |
+| `NdjsonFileReporter`   | Writes Cucumber Messages `.ndjson` file to disk  |
+
+### Cucumber Messages (NDJSON) Reporting
+
+Emit standard [Cucumber Messages](https://github.com/cucumber/messages) envelopes as Newline-Delimited JSON (NDJSON) to integrate with official Cucumber HTML, JSON, and JUnit formatters:
+
+```dart
+final reporter = NdjsonFileReporter(
+  outputPath: 'build/reports/cucumber-messages.ndjson',
+);
+
+await runBddTests<PatrolTester>(
+  // ...
+  reporter: reporter,
+);
+```
+
+For widget tests (`FakeAsync`) or web environments without `dart:io`, use `NdjsonReporter` with an in-memory `StringSink` or `onEnvelope` callback:
+
+```dart
+final buffer = StringBuffer();
+final reporter = NdjsonReporter(sink: buffer);
+```
+
+You can combine `MarkdownFileReporter` and `NdjsonFileReporter` in a single run via `CompositeReporter`:
+
+```dart
+final reporter = CompositeReporter([
+  MarkdownFileReporter(outputDir: 'build/docs/features'),
+  NdjsonFileReporter(outputPath: 'build/reports/cucumber-messages.ndjson'),
+]);
+```
 
 ### Markdown Report Generation
 
@@ -674,27 +802,38 @@ await runBddTests<PatrolTester>(
 | `ScenarioOutline`   | Template scenario expanded via Examples tables   |
 | `DataTable`         | Structured table data attached to a step         |
 | `DocString`         | Multi-line string attached to a step             |
+| `GherkinParseException` | Exception with file, line, and column on parse errors |
 | `TestPlan`          | Organized test groups ready for execution        |
 | `FeatureTestFactory` | Builds test plans from parsed features          |
 | `MarkdownFileReporter` | Generates Markdown docs from test results     |
+| `NdjsonReporter`    | Emits Cucumber Messages NDJSON to sink/callbacks |
+| `NdjsonFileReporter` | Writes Cucumber Messages `.ndjson` file to disk |
+| `SkipScenarioException` | Dynamically skips a scenario from inside a step |
 
 ## Development
 
 ```bash
-# Run all tests (unit + examples)
+# Run all tests (unit + compliance + examples)
 just test-all
 
 # Run unit tests only
 just test-unit
 
+# Run official Cucumber Gherkin & CCK compliance suites
+just test-compliance
+
 # Run all examples
 just test-example
 
 # Run individual examples
-just test-example-demo       # scenarios, background, tags, outlines
+just test-example-demo       # scenarios, background, tags, outlines, rules
 just test-example-data       # data tables, doc strings, registry merging
 just test-example-scheme     # scheme resolution, translation handlers
 just test-example-reporter   # reporters, lifecycle hooks, tree structure
+just test-example-i18n       # multi-language (i18n) BDD tests
+
+# Run tests with coverage
+just test-coverage
 
 # Static analysis
 just analyze

@@ -33,6 +33,9 @@ jobs:
       - name: Run unit tests
         run: dart test test/unit/
 
+      - name: Run compliance tests
+        run: dart test test/compliance/
+
       - name: Run example tests
         run: dart test example/
 
@@ -52,7 +55,9 @@ jobs:
         run: dart pub get
 
       - name: Coverage on PR branch
-        run: dart test --coverage=coverage test/unit/
+        run: |
+          dart test --coverage=coverage test/unit/ test/compliance/
+          dart run coverage:format_coverage --lcov --in=coverage --out=coverage/lcov.info --report-on=lib
 
       - name: Parse PR coverage
         id: pr_coverage
@@ -74,6 +79,7 @@ jobs:
           cd __base
           dart pub get
           dart test --coverage=coverage test/unit/
+          dart run coverage:format_coverage --lcov --in=coverage --out=coverage/lcov.info --report-on=lib
 
       - name: Parse base coverage
         id: base_coverage

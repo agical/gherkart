@@ -59,10 +59,7 @@ final _arbSource = AssetSource.fromMap({
 });
 
 final _resolver = SchemeResolver()
-  ..register(
-    't',
-    createArbTranslationHandler('example/l10n/en.arb', source: _arbSource),
-  );
+  ..register('t', createArbTranslationHandler('example/l10n/en.arb', source: _arbSource));
 
 // ---------------------------------------------------------------------------
 // Test runner
@@ -89,11 +86,6 @@ TestAdapter<void> _createTestAdapter() {
   );
 }
 
-void _testFunction(
-  String name, {
-  List<String>? tags,
-  bool skip = false,
-  Future<void> Function(void)? callback,
-}) {
+void _testFunction(String name, {List<String>? tags, bool skip = false, Future<void> Function(void)? callback}) {
   test(name, () => callback!(null), tags: tags, skip: skip);
 }

@@ -6,6 +6,8 @@
 ///
 /// Demonstrates:
 /// - `SummaryReporter` — prints pass/fail/skip counts at the end
+/// - `NdjsonReporter` — emits standard Cucumber Messages NDJSON envelopes
+/// - `CompositeReporter` — combines multiple reporters in one test run
 /// - `BddHooks` — `beforeAll`, `afterAll`, `beforeEach`, `afterEach`
 /// - `TestStructure.tree` — groups nested by directory structure
 ///
@@ -45,18 +47,21 @@ final mathSteps = StepRegistry<void>.fromMap({
 Future<void> main() async {
   setUp(() => _state.number = 0);
 
-  final reporter = SummaryReporter(
+  final summaryReporter = SummaryReporter(
     onSummary: (summary) {
       // Called after all features complete.
       // summary.featureCount, summary.scenarioPassed, etc.
     },
   );
 
+  // Emits standard Cucumber Messages NDJSON (use NdjsonFileReporter to write directly to disk).
+  final ndjsonBuffer = StringBuffer();
+  final ndjsonReporter = NdjsonReporter(sink: ndjsonBuffer);
+
+  final reporter = CompositeReporter([summaryReporter, ndjsonReporter]);
+
   await runBddTests<void>(
-    rootPaths: [
-      'example/features/demo.feature',
-      'example/features/background.feature',
-    ],
+    rootPaths: ['example/features/demo.feature', 'example/features/background.feature'],
     registry: mathSteps,
     source: FileSystemSource(),
     adapter: _createTestAdapter(),
@@ -91,11 +96,6 @@ TestAdapter<void> _createTestAdapter() {
   );
 }
 
-void _testFunction(
-  String name, {
-  List<String>? tags,
-  bool skip = false,
-  Future<void> Function(void)? callback,
-}) {
+void _testFunction(String name, {List<String>? tags, bool skip = false, Future<void> Function(void)? callback}) {
   test(name, () => callback!(null), tags: tags, skip: skip);
 }

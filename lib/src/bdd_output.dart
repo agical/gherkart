@@ -31,24 +31,20 @@ class BddOutput {
 
   /// Show feature and scenario names.
   const BddOutput.scenarios()
-      : showFeatureNames = true,
-        showScenarioNames = true,
-        showSteps = false,
-        showStepTiming = false;
+    : showFeatureNames = true,
+      showScenarioNames = true,
+      showSteps = false,
+      showStepTiming = false;
 
   /// Show feature, scenario, and step execution.
-  const BddOutput.steps()
-      : showFeatureNames = true,
-        showScenarioNames = true,
-        showSteps = true,
-        showStepTiming = false;
+  const BddOutput.steps() : showFeatureNames = true, showScenarioNames = true, showSteps = true, showStepTiming = false;
 
   /// Full verbose output including step timing.
   const BddOutput.verbose()
-      : showFeatureNames = true,
-        showScenarioNames = true,
-        showSteps = true,
-        showStepTiming = true;
+    : showFeatureNames = true,
+      showScenarioNames = true,
+      showSteps = true,
+      showStepTiming = true;
 
   /// Formats a feature name for display.
   String formatFeature(String name) => '\n📋 Feature: $name';
@@ -93,23 +89,14 @@ class BddOutput {
   }
 
   /// Prints completed step if enabled.
-  void printStepComplete(
-    String keyword,
-    String text,
-    Duration duration, [
-    void Function(String)? printer,
-  ]) {
+  void printStepComplete(String keyword, String text, Duration duration, [void Function(String)? printer]) {
     if (showSteps) {
       (printer ?? _print)(formatStepComplete(keyword, text, duration));
     }
   }
 
   /// Prints failed step if enabled.
-  void printStepFailed(
-    String keyword,
-    String text, [
-    void Function(String)? printer,
-  ]) {
+  void printStepFailed(String keyword, String text, [void Function(String)? printer]) {
     if (showSteps) {
       (printer ?? _print)(formatStepFailed(keyword, text));
     }

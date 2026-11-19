@@ -80,10 +80,7 @@ class AssetSource implements FeatureSource {
   /// Creates an asset source from a map of path -> content.
   ///
   /// Paths should be relative and consistent with how you reference them.
-  AssetSource.fromMap(Map<String, String> features)
-      : _features = features,
-        _loader = null,
-        _lister = null;
+  AssetSource.fromMap(Map<String, String> features) : _features = features, _loader = null, _lister = null;
 
   /// Creates an asset source with a custom loader function.
   ///
@@ -92,9 +89,9 @@ class AssetSource implements FeatureSource {
   AssetSource.fromLoader(
     Future<String> Function(String path) loader, {
     Future<List<String>> Function(String path)? lister,
-  })  : _features = null,
-        _loader = loader,
-        _lister = lister;
+  }) : _features = null,
+       _loader = loader,
+       _lister = lister;
 
   @override
   Future<String> read(String path) async {

@@ -33,10 +33,7 @@ class MarkdownFileReporter implements BddReporter {
   ///
   /// [outputDir] - Directory where markdown files will be written.
   /// [cleanFirst] - If true, deletes all existing files in outputDir first.
-  MarkdownFileReporter({
-    required this.outputDir,
-    this.cleanFirst = true,
-  }) {
+  MarkdownFileReporter({required this.outputDir, this.cleanFirst = true}) {
     final dir = Directory(outputDir);
     if (cleanFirst && dir.existsSync()) {
       dir.deleteSync(recursive: true);
@@ -63,9 +60,9 @@ class MarkdownFileReporter implements BddReporter {
     // Find the correct feature by path (handles async test execution)
     final targetFeature = scenario.featurePath != null
         ? _features.cast<_FeatureReport?>().firstWhere(
-              (f) => f?.feature.path == scenario.featurePath,
-              orElse: () => _currentFeature,
-            )
+            (f) => f?.feature.path == scenario.featurePath,
+            orElse: () => _currentFeature,
+          )
         : _currentFeature;
     targetFeature?.scenarios.add(scenarioReport);
     _currentScenario = scenarioReport;
@@ -78,13 +75,13 @@ class MarkdownFileReporter implements BddReporter {
     _ScenarioReport? target;
     if (scenario.featurePath != null) {
       final feature = _features.cast<_FeatureReport?>().firstWhere(
-            (f) => f?.feature.path == scenario.featurePath,
-            orElse: () => null,
-          );
+        (f) => f?.feature.path == scenario.featurePath,
+        orElse: () => null,
+      );
       target = feature?.scenarios.cast<_ScenarioReport?>().firstWhere(
-            (s) => s?.scenario.name == scenario.name,
-            orElse: () => null,
-          );
+        (s) => s?.scenario.name == scenario.name,
+        orElse: () => null,
+      );
     }
     target ??= _currentScenario;
     target?.result = result;
@@ -217,9 +214,11 @@ class MarkdownFileReporter implements BddReporter {
         StepKeyword.given => '📋',
         StepKeyword.when => '⚡',
         StepKeyword.then => '✅',
-        StepKeyword.and || StepKeyword.but => '➕',
+        StepKeyword.and || StepKeyword.but || StepKeyword.star => '➕',
       };
-      final keywordText = step.keyword.name[0].toUpperCase() + step.keyword.name.substring(1);
+      final keywordText = step.keyword == StepKeyword.star
+          ? '*'
+          : step.keyword.name[0].toUpperCase() + step.keyword.name.substring(1);
       buffer.writeln('- $keywordIcon **$keywordText** ${step.text}');
     }
     buffer.writeln();
