@@ -61,20 +61,26 @@ test-coverage:
 
 # === Code Quality ===
 
-# Run static analysis
+# Run static analysis and check dependency versions
 [group('quality')]
 analyze:
     dart analyze --fatal-infos
+    dart run tool/check_dependencies.dart
+
+# Check that dependency constraints support the latest versions on pub.dev
+[group('quality')]
+check-deps:
+    dart run tool/check_dependencies.dart
 
 # Format code
 [group('quality')]
 format:
-    dart format --page-width=120 lib test example
+    dart format --page-width=120 lib test example tool
 
 # Check formatting without modifying
 [group('quality')]
 format-check:
-    dart format --page-width=120 --set-exit-if-changed lib test example
+    dart format --page-width=120 --set-exit-if-changed lib test example tool
 
 # Fix auto-fixable issues
 [group('quality')]

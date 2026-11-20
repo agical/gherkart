@@ -36,7 +36,7 @@ import 'step_registry.dart';
 /// ```
 class NdjsonReporter implements BddReporter {
   /// Cucumber Messages schema protocol version emitted in [cm.Meta].
-  static const String protocolVersion = '34.2.1';
+  static const String protocolVersion = '35.0.0';
 
   /// Optional [StringSink] where serialized NDJSON lines are written on [flush].
   final StringSink? sink;
@@ -216,7 +216,7 @@ class NdjsonReporter implements BddReporter {
             meta ??
             const cm.Meta(
               protocolVersion: protocolVersion,
-              implementation: cm.Product(name: 'gherkart', version: '0.3.0'),
+              implementation: cm.Product(name: 'gherkart', version: '0.3.1'),
               runtime: cm.Product(name: 'Dart'),
               os: cm.Product(name: 'unknown'),
               cpu: cm.Product(name: 'unknown'),

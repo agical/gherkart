@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.3.1
+
+### Maintenance
+
+- Upgraded `cucumber_gherkin` (`^43.0.0`), `cucumber_messages` (`^35.0.0`), and `lints` (`^6.1.0`)
+  to support the latest stable versions on `pub.dev`.
+- Added automated dependency freshness check (`tool/check_dependencies.dart`) to `just analyze` and
+  CI to ensure `pubspec.yaml` constraints stay up to date with `pub.dev`.
+
 ## 0.3.0
 
 ### Features

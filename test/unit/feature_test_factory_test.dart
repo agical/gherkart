@@ -121,7 +121,7 @@ Feature: Rules Demo
       * do admin action
 ''';
         final feature = parseFeature(content, 'test/features/rules.feature');
-        final registry = StepRegistry<void>()..register('do admin action'.mapper(), (_, __) async {});
+        final registry = StepRegistry<void>()..register('do admin action'.mapper(), (_, _) async {});
         final factory = FeatureTestFactory(rootPath: 'test/features', registry: registry);
 
         final plan = factory.buildTestPlan([feature]);
