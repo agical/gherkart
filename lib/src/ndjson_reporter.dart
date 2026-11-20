@@ -36,7 +36,7 @@ import 'step_registry.dart';
 /// ```
 class NdjsonReporter implements BddReporter {
   /// Cucumber Messages schema protocol version emitted in [cm.Meta].
-  static const String protocolVersion = '34.2.1';
+  static const String protocolVersion = '35.0.0';
 
   /// Optional [StringSink] where serialized NDJSON lines are written on [flush].
   final StringSink? sink;

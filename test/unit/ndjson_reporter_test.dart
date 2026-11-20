@@ -90,9 +90,9 @@ Feature: Failure handling
 ''', 'fail.feature');
 
       final registry = StepRegistry<void>.fromMap({
-        'step one'.mapper(): (_, __) async {},
-        'step two fails'.mapper(): (_, __) async {},
-        'step three is skipped'.mapper(): (_, __) async {},
+        'step one'.mapper(): (_, _) async {},
+        'step two fails'.mapper(): (_, _) async {},
+        'step three is skipped'.mapper(): (_, _) async {},
       });
 
       final reporter = NdjsonReporter(registry: registry);
@@ -166,7 +166,7 @@ Feature: Failure handling
         fail: (msg) => throw StateError(msg),
       );
 
-      final registry = StepRegistry<void>.fromMap({'defined step'.mapper(): (_, __) async {}});
+      final registry = StepRegistry<void>.fromMap({'defined step'.mapper(): (_, _) async {}});
 
       final source = AssetSource.fromMap({
         'missing.feature': '''
