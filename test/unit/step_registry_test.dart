@@ -175,8 +175,8 @@ void main() {
           ..then('{int} apple(s) remain(s)', (_, ctx) async {
             captured.add(ctx.arg<int>(0));
           })
-          ..and('the basket is empty/full', (_, __) async {})
-          ..but('nothing is spoiled', (_, __) async {});
+          ..and('the basket is empty/full', (_, _) async {})
+          ..but('nothing is spoiled', (_, _) async {});
 
         await registry.match('there is 1 apple on the tree')!.execute(null);
         await registry.match('there are 5 apples on the tree')!.execute(null);
@@ -199,7 +199,7 @@ void main() {
             colors.add(ctx.arg<String>(0));
           });
 
-        final r2 = StepRegistry<void>.fromExpressions({'I press {word}': (_, __) async {}});
+        final r2 = StepRegistry<void>.fromExpressions({'I press {word}': (_, _) async {}});
 
         final merged = r1.merge(r2);
         expect(merged.customParameterTypes, hasLength(1));
@@ -232,7 +232,7 @@ void main() {
           'I see {string}'.cucumber(): (_, ctx) async {
             resolvedGreeting = ctx.arg<String>(0);
           },
-          'legacy {name} step'.mapper(): (_, __) async {},
+          'legacy {name} step'.mapper(): (_, _) async {},
         });
 
         final match = registry.match('I see "{t:home}"')!;

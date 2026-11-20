@@ -25,10 +25,13 @@ jobs:
         run: dart pub get
 
       - name: Check formatting
-        run: dart format --page-width=120 --set-exit-if-changed lib test
+        run: dart format --page-width=120 --set-exit-if-changed lib test tool
 
       - name: Analyze
         run: dart analyze --fatal-infos
+
+      - name: Check dependency versions
+        run: dart run tool/check_dependencies.dart
 
       - name: Run unit tests
         run: dart test test/unit/

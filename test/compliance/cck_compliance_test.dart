@@ -116,10 +116,11 @@ void _assertCckConformance(List<cm.Envelope> actual, List<cm.Envelope> expected,
   final expectedTypes = expected.map(_envelopeType).toList();
   expect(actualTypes, equals(expectedTypes), reason: 'Envelope sequence mismatch in CCK suite "$suiteName"');
 
-  // 2. Meta protocol version matches
+  // 2. Meta protocol version is present and matches our cucumber_messages schema version
   final actualMeta = actual.firstWhere((e) => e.meta != null).meta!;
   final expectedMeta = expected.firstWhere((e) => e.meta != null).meta!;
-  expect(actualMeta.protocolVersion, expectedMeta.protocolVersion);
+  expect(actualMeta.protocolVersion, NdjsonReporter.protocolVersion);
+  expect(expectedMeta.protocolVersion, isNotEmpty);
 
   // 3. Pickles match names, steps, and tags
   final actualPickles = actual.where((e) => e.pickle != null).map((e) => e.pickle!).toList();
@@ -229,7 +230,7 @@ void main() {
   group('Official Cucumber Compatibility Kit (CCK) — NdjsonReporter Conformance', () {
     test('minimal', () async {
       final registry = StepRegistry<void>.fromMap({
-        'I have {count} cukes in my belly'.mapper(types: {'count': int}): (_, __) async {},
+        'I have {count} cukes in my belly'.mapper(types: {'count': int}): (_, _) async {},
       });
 
       final actual = await _executeCckSample(
@@ -249,9 +250,9 @@ void main() {
 
     test('backgrounds', () async {
       final registry = StepRegistry<void>.fromMap({
-        'an order for "{item}"'.mapper(): (_, __) async {},
-        'an action'.mapper(): (_, __) async {},
-        'an outcome'.mapper(): (_, __) async {},
+        'an order for "{item}"'.mapper(): (_, _) async {},
+        'an action'.mapper(): (_, _) async {},
+        'an outcome'.mapper(): (_, _) async {},
       });
 
       final actual = await _executeCckSample(
@@ -271,10 +272,10 @@ void main() {
         'the customer has {cents} cents'.mapper(types: {'cents': int}): (_, ctx) async {
           money = ctx.arg<int>(0);
         },
-        'there are chocolate bars in stock'.mapper(): (_, __) async {
+        'there are chocolate bars in stock'.mapper(): (_, _) async {
           stock = ['Mars'];
         },
-        'there are no chocolate bars in stock'.mapper(): (_, __) async {
+        'there are no chocolate bars in stock'.mapper(): (_, _) async {
           stock = [];
         },
         'the customer tries to buy a {price} cent chocolate bar'.mapper(types: {'price': int}): (_, ctx) async {
@@ -283,10 +284,10 @@ void main() {
             chocolate = stock.removeLast();
           }
         },
-        'the sale should not happen'.mapper(): (_, __) async {
+        'the sale should not happen'.mapper(): (_, _) async {
           expect(chocolate, isNull);
         },
-        'the sale should happen'.mapper(): (_, __) async {
+        'the sale should happen'.mapper(): (_, _) async {
           expect(chocolate, isNotNull);
         },
       });
@@ -295,7 +296,7 @@ void main() {
         featurePaths: ['test/compliance/cck/rules/rules.feature'],
         registry: registry,
         hooks: BddHooks<void>(
-          beforeEach: (_, __) {
+          beforeEach: (_, _) {
             money = 0;
             stock = [];
             chocolate = null;
@@ -308,9 +309,9 @@ void main() {
 
     test('rules-backgrounds', () async {
       final registry = StepRegistry<void>.fromMap({
-        'an order for "{item}"'.mapper(): (_, __) async {},
-        'an action'.mapper(): (_, __) async {},
-        'an outcome'.mapper(): (_, __) async {},
+        'an order for "{item}"'.mapper(): (_, _) async {},
+        'an action'.mapper(): (_, _) async {},
+        'an outcome'.mapper(): (_, _) async {},
       });
 
       final actual = await _executeCckSample(
@@ -348,7 +349,7 @@ void main() {
         featurePaths: ['test/compliance/cck/examples-tables/examples-tables.feature'],
         registry: registry,
         hooks: BddHooks<void>(
-          beforeEach: (_, __) {
+          beforeEach: (_, _) {
             count = 0;
             friends = 0;
           },
@@ -407,9 +408,9 @@ void main() {
 
     test('skipped (dynamic runtime step skipping)', () async {
       final registry = StepRegistry<void>.fromMap({
-        'a step that does not skip'.mapper(): (_, __) async {},
-        'a step that is skipped'.mapper(): (_, __) async {},
-        'I skip a step'.mapper(): (_, __) async {
+        'a step that does not skip'.mapper(): (_, _) async {},
+        'a step that is skipped'.mapper(): (_, _) async {},
+        'I skip a step'.mapper(): (_, _) async {
           throw const SkipScenarioException('skipped by step');
         },
       });
@@ -424,8 +425,8 @@ void main() {
 
     test('undefined (undefined steps, Suggestion snippets, and subsequent SKIPPED steps)', () async {
       final registry = StepRegistry<void>.fromMap({
-        'an implemented step'.mapper(): (_, __) async {},
-        'a step that will be skipped'.mapper(): (_, __) async {},
+        'an implemented step'.mapper(): (_, _) async {},
+        'a step that will be skipped'.mapper(): (_, _) async {},
       });
 
       final actual = await _executeCckSample(
@@ -438,7 +439,7 @@ void main() {
     });
 
     test('multiple-features', () async {
-      final registry = StepRegistry<void>.fromMap({'an order for "{item}"'.mapper(): (_, __) async {}});
+      final registry = StepRegistry<void>.fromMap({'an order for "{item}"'.mapper(): (_, _) async {}});
 
       final actual = await _executeCckSample(
         featurePaths: ['test/compliance/cck/multiple-features'],

@@ -33,16 +33,16 @@ void main() {
       final executionOrder = <String>[];
 
       final registry = StepRegistry<void>.fromMap({
-        'feature background step'.mapper(): (_, __) async {
+        'feature background step'.mapper(): (_, _) async {
           executionOrder.add('feature_bg');
         },
-        'rule background step'.mapper(): (_, __) async {
+        'rule background step'.mapper(): (_, _) async {
           executionOrder.add('rule_bg');
         },
-        'first action'.mapper(): (_, __) async {
+        'first action'.mapper(): (_, _) async {
           executionOrder.add('action_1');
         },
-        'outcome verified'.mapper(): (_, __) async {
+        'outcome verified'.mapper(): (_, _) async {
           executionOrder.add('outcome');
         },
       });
@@ -177,16 +177,16 @@ Feature: Standard Outline
       final bulletStepsRun = <String>[];
 
       final registry = StepRegistry<void>.fromMap({
-        'setup database'.mapper(): (_, __) async {
+        'setup database'.mapper(): (_, _) async {
           bulletStepsRun.add('setup');
         },
-        'send request'.mapper(): (_, __) async {
+        'send request'.mapper(): (_, _) async {
           bulletStepsRun.add('send');
         },
-        'receive 200 ok'.mapper(): (_, __) async {
+        'receive 200 ok'.mapper(): (_, _) async {
           bulletStepsRun.add('200');
         },
-        'cleanup resources'.mapper(): (_, __) async {
+        'cleanup resources'.mapper(): (_, _) async {
           bulletStepsRun.add('cleanup');
         },
       });
@@ -224,7 +224,7 @@ Feature: Bullet Steps
       var exampleExecuted = false;
 
       final registry = StepRegistry<void>.fromMap({
-        'an example step'.mapper(): (_, __) async {
+        'an example step'.mapper(): (_, _) async {
           exampleExecuted = true;
         },
       });
@@ -257,13 +257,13 @@ Feature: Example Synonym
       final deStepsRun = <String>[];
 
       final registry = StepRegistry<void>.fromMap({
-        'das System ist bereit'.mapper(): (_, __) async {
+        'das System ist bereit'.mapper(): (_, _) async {
           deStepsRun.add('bereit');
         },
-        'der Benutzer sich anmeldet'.mapper(): (_, __) async {
+        'der Benutzer sich anmeldet'.mapper(): (_, _) async {
           deStepsRun.add('anmeldet');
         },
-        'das Dashboard angezeigt wird'.mapper(): (_, __) async {
+        'das Dashboard angezeigt wird'.mapper(): (_, _) async {
           deStepsRun.add('dashboard');
         },
       });
@@ -301,13 +301,13 @@ Funktionalität: Deutsche Sprachtests
       final svStepsRun = <String>[];
 
       final registry = StepRegistry<void>.fromMap({
-        'att användaren är inloggad'.mapper(): (_, __) async {
+        'att användaren är inloggad'.mapper(): (_, _) async {
           svStepsRun.add('inloggad');
         },
-        'användaren klickar på spara'.mapper(): (_, __) async {
+        'användaren klickar på spara'.mapper(): (_, _) async {
           svStepsRun.add('spara');
         },
-        'visas en bekräftelse'.mapper(): (_, __) async {
+        'visas en bekräftelse'.mapper(): (_, _) async {
           svStepsRun.add('bekräftelse');
         },
       });
@@ -534,7 +534,7 @@ Feature: Scheme Resolution in Runner
       );
 
       final registry = StepRegistry<void>.fromMap({
-        'a step'.mapper(): (_, __) async {
+        'a step'.mapper(): (_, _) async {
           hookEvents.add('step');
         },
       });
@@ -597,7 +597,7 @@ Feature: Tag Skipping
 
       await runBddTests<void>(
         rootPaths: ['skip.feature'],
-        registry: StepRegistry<void>()..register('step'.mapper(), (_, __) async {}),
+        registry: StepRegistry<void>()..register('step'.mapper(), (_, _) async {}),
         adapter: adapter,
         source: source,
         structure: TestStructure.flat,
@@ -636,8 +636,8 @@ Feature: Tag Skipping
       );
 
       final registry = StepRegistry<void>.fromMap({
-        'pass step'.mapper(): (_, __) async {},
-        'fail step'.mapper(): (_, __) async {
+        'pass step'.mapper(): (_, _) async {},
+        'fail step'.mapper(): (_, _) async {
           throw Exception('Step failed intentionally');
         },
       });
